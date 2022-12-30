@@ -1,4 +1,7 @@
 .idea
 .venv
+venv
+venv2
+.ipynb_checkpoints
 instructions.md
 __pycache__
