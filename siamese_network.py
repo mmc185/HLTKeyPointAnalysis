@@ -90,11 +90,6 @@ def train(model, device, train_loader, loss_function, optimizer, epoch, schedule
         output1, output2 = model(args, kps, labels)
         
         #print(output)
-        '''new_shape = (output1.shape[0], output1.shape[1]* output1.shape[2])
-        labels = [labels] #.shape[0],))
-        print(labels.shape)
-        output1 = output1.reshape(new_shape)
-        output2 = output2.reshape(new_shape)'''
         loss = loss_function(output1, output2, labels)
 
       
@@ -112,7 +107,7 @@ def train(model, device, train_loader, loss_function, optimizer, epoch, schedule
 
         # Update the learning rate.
         scheduler.step()
-      
+        
         if batch_idx % 10 == 0:
             print(f'Train Epoch:', epoch, 'batch:',
                 batch_idx, '/', len(train_loader.dataset), 'loss:',

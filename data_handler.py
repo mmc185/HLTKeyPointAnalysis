@@ -116,11 +116,11 @@ Returns:
 '''
 def tokenization(sentences, tokenizer, labels=None):
      # Tokenize all of the sentences and map the tokens to thier word IDs.
-      input_ids = []
-      attention_masks = []
+        input_ids = []
+        attention_masks = []
 
       # For every sentence...
-      for sent in sentences:
+        for sent in sentences:
           # `encode_plus` will:
           #   (1) Tokenize the sentence.
           #   (2) Prepend the `[CLS]` token to the start.
@@ -128,7 +128,7 @@ def tokenization(sentences, tokenizer, labels=None):
           #   (4) Map tokens to their IDs.
           #   (5) Pad or truncate the sentence to `max_length`
           #   (6) Create attention masks for [PAD] tokens.
-          encoding = tokenizer.encode_plus(
+            encoding = tokenizer.encode_plus(
                               sent,                      # Sentence to encode.
                               add_special_tokens = True, # Add '[CLS]' and '[SEP]'
                               max_length = 512,           # Pad & truncate all sentences.
@@ -138,20 +138,20 @@ def tokenization(sentences, tokenizer, labels=None):
                         )
           
           # Add the encoded sentence to the list.    
-          input_ids.append(encoding['input_ids'])
+            input_ids.append(encoding['input_ids'])
           
           # And its attention mask (simply differentiates padding from non-padding).
-          attention_masks.append(encoding['attention_mask'])
+            attention_masks.append(encoding['attention_mask'])
 
       # Convert the lists into tensors.
-      input_ids = torch.cat(input_ids, dim=0)
-      attention_masks = torch.cat(attention_masks, dim=0)
+        input_ids = torch.cat(input_ids, dim=0)
+        attention_masks = torch.cat(attention_masks, dim=0)
 
-      if labels is not None:
-        labels = torch.tensor(labels)
-        return input_ids, attention_masks, labels
-      else:
-        return input_ids, attention_masks
+        if labels is not None:
+            labels = torch.tensor(labels)
+            return input_ids, attention_masks, labels
+        else:
+            return input_ids, attention_masks
 
 '''
 Tokenize a dataframe of sentences with labels
