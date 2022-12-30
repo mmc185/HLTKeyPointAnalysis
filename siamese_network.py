@@ -14,15 +14,15 @@ class SiameseNetwork(nn.Module):
         super(SiameseNetwork, self).__init__()
 
         if bert_type is None:
-          self.model = BertModel.from_pretrained("bert-base-uncased",
+            self.model = BertModel.from_pretrained("bert-base-uncased",
                                           num_labels = 2)
         else:
-          self.model = bert_type
+            self.model = bert_type
 
         if output_type is None:
-          self.output_type = util.cos_sim
+            self.output_type = util.cos_sim
         else:
-          self.output_type = output_type
+            self.output_type = output_type
         
         # add linear layers to compare
         '''self.fc = nn.Sequential(
@@ -73,42 +73,47 @@ class SiameseNetwork(nn.Module):
         return output1, output2
 
     def get_smart_batching_collate(self):
-      return self.model.smart_batching_collate
+        return self.model.smart_batching_collate
 
 def train(model, device, train_loader, loss_function, optimizer, epoch, scheduler):
-  model.train()
-
-  for batch_idx, (encodings) in enumerate(train_loader):
+    model.train()
+    
+    for batch_idx, (encodings) in enumerate(train_loader):
       #images_1, images_2, targets = images_1.to(device), images_2.to(device), targets.to(device)
       
       # Extract arguments, key_points and labels all from the same batch
-      args = encodings['arg']
-      kps = encodings['kp']
-      labels = encodings['label']
+        args = encodings['arg']
+        kps = encodings['kp']
+        labels = encodings['label']
+        
+        optimizer.zero_grad()
+        output1, output2 = model(args, kps, labels)
+        
+        #print(output)
+        '''new_shape = (output1.shape[0], output1.shape[1]* output1.shape[2])
+        labels = [labels] #.shape[0],))
+        print(labels.shape)
+        output1 = output1.reshape(new_shape)
+        output2 = output2.reshape(new_shape)'''
+        loss = loss_function(output1, output2, labels)
 
-      optimizer.zero_grad()
-      output1, output2 = model(args, kps, labels)
-      #print(output)
-      loss = loss_function(output1, output2, labels)
-
-      (output1.shape)
-      (output2.shape)
-      #loss = loss_function(tf.convert_to_tensor(labels.numpy()), tf.convert_to_tensor(outputs.numpy()))
-      loss.backward()
-
-      # Clip the norm of the gradients to 1.0.
-      # This is to help prevent the "exploding gradients" problem.
-      torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
-
-      # Update parameters and take a step using the computed gradient.
-      # The optimizer dictates the "update rule"--how the parameters are
-      # modified based on their gradients, the learning rate, etc.
-      optimizer.step()
-
-      # Update the learning rate.
-      scheduler.step()
       
-      if batch_idx % 10 == 0:
-          print(f'Train Epoch:', epoch, 'batch:',
+        #loss = loss_function(tf.convert_to_tensor(labels.numpy()), tf.convert_to_tensor(outputs.numpy()))
+        loss.backward()
+
+        # Clip the norm of the gradients to 1.0.
+        # This is to help prevent the "exploding gradients" problem.
+        torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
+
+        # Update parameters and take a step using the computed gradient.
+        # The optimizer dictates the "update rule"--how the parameters are
+        # modified based on their gradients, the learning rate, etc.
+        optimizer.step()
+
+        # Update the learning rate.
+        scheduler.step()
+      
+        if batch_idx % 10 == 0:
+            print(f'Train Epoch:', epoch, 'batch:',
                 batch_idx, '/', len(train_loader.dataset), 'loss:',
                 loss.item())
