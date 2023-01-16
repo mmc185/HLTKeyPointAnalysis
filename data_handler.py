@@ -135,6 +135,7 @@ def tokenization(sentences, tokenizer, labels=None):
                               pad_to_max_length = True,
                               return_attention_mask = True,   # Construct attn. masks.
                               return_tensors = 'pt',     # Return pytorch tensors.
+                              truncation=True
                         )
           
           # Add the encoded sentence to the list.    
