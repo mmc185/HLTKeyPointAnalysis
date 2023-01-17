@@ -69,8 +69,12 @@ class SiameseNetwork(nn.Module):
 
         # pass the out of the linear layers to sigmoid layer
         #output = self.sigmoid(output)
+        #print(type(output1))
+        #cosine_sim = util.cos_sim(output1, output2) #self.output_type(output1, output2)
         
         return output1, output2
+        
+        #return cosine_sim
 
     def get_smart_batching_collate(self):
         return self.model.smart_batching_collate
