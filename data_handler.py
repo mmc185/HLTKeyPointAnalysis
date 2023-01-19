@@ -18,10 +18,10 @@ def load(path = "", filename_train = "", filename_test = "", sep_char=';'):
     test = None
 
     if filename_train != "":
-        train = pd.read_csv(path+filename_train, sep_char)
+        train = pd.read_csv(path+filename_train, sep=sep_char)
         train = __get_dataset(train)
     if filename_test != "":
-        test = pd.read_csv(path+filename_test, sep_char)
+        test = pd.read_csv(path+filename_test, sep=sep_char)
         test = __get_dataset(test)
 
     return train, test
@@ -94,9 +94,9 @@ def split_train_data(df, perc_split=0.8):
     print(f"one_val: ", one_val)
 
     train = df[df['label'] == 0][:zero_train]
-    train = train.append(df[df['label'] == 1][:one_train])
+    train = pd.concat([train, df[df['label'] == 1][:one_train]])
     val = df[df['label'] == 0][zero_train:zero_train + zero_val]
-    val = val.append(df[df['label'] == 1][one_train : one_train+one_val])
+    val = pd.concat([val, df[df['label'] == 1][one_train : one_train+one_val]])
 
     train = train[['argument', 'key_point', 'topic', 'label']]
     val = val[['argument', 'key_point', 'topic', 'label']]
