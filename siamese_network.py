@@ -10,7 +10,7 @@ class SiameseNetwork(nn.Module):
         The output of each network is concatenated and passed to a linear layer. 
         The output of the linear layer passed through a sigmoid function.
     """
-    def __init__(self, bert_type=None, output_type=None):
+    def __init__(self, bert_type=None):
         super(SiameseNetwork, self).__init__()
 
         if bert_type is None:
@@ -19,10 +19,7 @@ class SiameseNetwork(nn.Module):
         else:
             self.model = bert_type
 
-        if output_type is None:
-            self.output_type = util.cos_sim
-        else:
-            self.output_type = output_type
+        self.output_fun = torch.nn.CosineSimilarity()
         
         # add linear layers to compare
         '''self.fc = nn.Sequential(
@@ -56,63 +53,53 @@ class SiameseNetwork(nn.Module):
         # get two images' features
         output1 = self.forward_once(input1['input_ids'], input1['attention_masks'])
         output2 = self.forward_once(input2['input_ids'], input2['attention_masks'])
-
-        # concatenate both images' features
-        #output = torch.cat((output1, output2), 1)
-        #output = []
-        #for i in range(output1.shape[0]):
-         # output.append(self.output_type(output1[i], output2[i]))
-
-
-        # pass the concatenation to the linear layers
-        #output = self.fc(output)
-
-        # pass the out of the linear layers to sigmoid layer
-        #output = self.sigmoid(output)
-        #print(type(output1))
-        #cosine_sim = util.cos_sim(output1, output2) #self.output_type(output1, output2)
         
-        return output1, output2
-        
-        #return cosine_sim
+        # AVG of every token
+        output1 = torch.mean(output1, 1)
+        output2 = torch.mean(output2, 1)
+
+        out = self.output_fun(output1, output2)
+
+        return out
 
     def get_smart_batching_collate(self):
         return self.model.smart_batching_collate
 
-def train(model, device, train_loader, loss_function, optimizer, epoch, scheduler):
+def train(model, device, train_loader, loss_function, optimizer, epochs, scheduler):
     model.train()
     
-    for batch_idx, (encodings) in enumerate(train_loader):
-      #images_1, images_2, targets = images_1.to(device), images_2.to(device), targets.to(device)
-      
-      # Extract arguments, key_points and labels all from the same batch
-        args = encodings['arg']
-        kps = encodings['kp']
-        labels = encodings['label']
-        
-        optimizer.zero_grad()
-        output1, output2 = model(args, kps, labels)
-        
-        #print(output)
-        loss = loss_function(output1, output2, labels)
+    loss_function.to(device)
+    
+    for epoch in range(0, epochs):
+        for batch_idx, (encodings) in enumerate(train_loader):
 
-      
-        #loss = loss_function(tf.convert_to_tensor(labels.numpy()), tf.convert_to_tensor(outputs.numpy()))
-        loss.backward()
+            # Extract arguments, key_points and labels all from the same batch
+            args = {k:v.to(device) for k,v in encodings['arg'].items()}
 
-        # Clip the norm of the gradients to 1.0.
-        # This is to help prevent the "exploding gradients" problem.
-        torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
+            kps = {k:v.to(device) for k,v in encodings['kp'].items()}
 
-        # Update parameters and take a step using the computed gradient.
-        # The optimizer dictates the "update rule"--how the parameters are
-        # modified based on their gradients, the learning rate, etc.
-        optimizer.step()
+            labels = encodings['label']
+            labels = labels.to(device)
 
-        # Update the learning rate.
-        scheduler.step()
-        
-        if batch_idx % 10 == 0:
-            print(f'Train Epoch:', epoch, 'batch:',
-                batch_idx, '/', len(train_loader.dataset), 'loss:',
-                loss.item())
+            optimizer.zero_grad()
+            outp = model(args, kps)
+
+            loss = loss_function(outp.float(), labels.float())
+            loss.backward()
+
+            # Clip the norm of the gradients to 1.0.
+            # This is to help prevent the "exploding gradients" problem.
+            torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
+
+            # Update parameters and take a step using the computed gradient.
+            # The optimizer dictates the "update rule"--how the parameters are
+            # modified based on their gradients, the learning rate, etc.
+            optimizer.step()
+
+            # Update the learning rate.
+            scheduler.step()
+
+            if batch_idx % 10 == 0:
+                print(f'Train Epoch:', epoch, 'batch:',
+                    batch_idx, 'loss:',
+                    loss.mean())
