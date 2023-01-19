@@ -42,7 +42,7 @@ class SiameseNetwork(nn.Module):
             torch.nn.init.xavier_uniform(m.weight)
             m.bias.data.fill_(0.01)
     
-    def forward_once(self, input_ids, attention_masks, label):
+    def forward_once(self, input_ids, attention_masks):
         
         outputs = self.model(input_ids,
                             token_type_ids = None,
@@ -52,10 +52,10 @@ class SiameseNetwork(nn.Module):
 
         return last_hidden_states
 
-    def forward(self, input1, input2, label):
+    def forward(self, input1, input2):
         # get two images' features
-        output1 = self.forward_once(input1['input_ids'], input1['attention_masks'], label)
-        output2 = self.forward_once(input2['input_ids'], input2['attention_masks'], label)
+        output1 = self.forward_once(input1['input_ids'], input1['attention_masks'])
+        output2 = self.forward_once(input2['input_ids'], input2['attention_masks'])
 
         # concatenate both images' features
         #output = torch.cat((output1, output2), 1)
