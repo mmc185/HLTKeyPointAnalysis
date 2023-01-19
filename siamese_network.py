@@ -103,3 +103,35 @@ def train(model, device, train_loader, loss_function, optimizer, epochs, schedul
                 print(f'Train Epoch:', epoch, 'batch:',
                     batch_idx, 'loss:',
                     loss.mean())
+                
+def test(model, device, test_loader, loss_function, metric):
+    model.train()
+    
+    loss_function.to(device)
+    
+    predictions = {'labels':[], 'predicted':[], 'losses':[]}
+    
+    
+    with torch.no_grad():
+        for batch_idx, (encodings) in enumerate(test_loader):
+
+            # Extract arguments, key_points and labels all from the same batch
+            args = {k:v.to(device) for k,v in encodings['arg'].items()}
+
+            kps = {k:v.to(device) for k,v in encodings['kp'].items()}
+
+            labels = encodings['label']
+            labels = labels.to(device)
+
+            outp = model(args, kps)
+
+            loss = loss_function(outp.float(), labels.float())
+            
+            labels = labels.cpu()
+            outp = outp.cpu()
+            loss = loss.cpu()
+            predictions['labels'].append(labels[0].tolist())
+            predictions['predicted'].append(outp[0].tolist())
+            predictions['losses'].append(loss.tolist())
+            
+    return predictions
