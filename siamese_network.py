@@ -3,6 +3,8 @@ from torch import nn
 from transformers import BertModel
 from sentence_transformers import util
 from torch.optim.lr_scheduler import StepLR
+import numpy as np
+from sklearn.metrics import accuracy_score
 
 class SiameseNetwork(nn.Module):
     """
@@ -65,12 +67,28 @@ class SiameseNetwork(nn.Module):
     def get_smart_batching_collate(self):
         return self.model.smart_batching_collate
 
-def train(model, device, train_loader, loss_function, optimizer, epochs, scheduler):
+def train(model, device, train_loader, loss_function, optimizer, epochs, scheduler, verbose=False):
     model.train()
     
     loss_function.to(device)
+    results = {'loss': torch.zeros([epochs,1]),
+              'predicted': torch.zeros([epochs,1]),
+              'labels': torch.zeros([epochs,1])
+              }
+    
+    results = {k:v.to(device) for k,v in results.items()}
     
     for epoch in range(0, epochs):
+        
+        epoch_results = {'loss': torch.zeros([len(train_loader),1]),
+              'predicted': torch.zeros([len(train_loader.dataset)]),
+              'labels': torch.zeros([len(train_loader.dataset)])
+        }
+        
+        epoch_results = {k:v.to(device) for k,v in epoch_results.items()}
+        
+        #TODO compute metrics for each epoch and return the mean of each metric
+        
         for batch_idx, (encodings) in enumerate(train_loader):
 
             # Extract arguments, key_points and labels all from the same batch
@@ -86,6 +104,17 @@ def train(model, device, train_loader, loss_function, optimizer, epochs, schedul
 
             loss = loss_function(outp.float(), labels.float())
             loss.backward()
+            
+            # Compute start and end index of the slice to assign
+            start_idx = batch_idx*train_loader.batch_size;
+            if batch_idx < (len(train_loader)-1):
+                end_idx = (batch_idx+1)*(len(outp))
+            else:
+                end_idx = len(train_loader.dataset)
+                
+            epoch_results['loss'][batch_idx] = loss
+            epoch_results['predicted'][start_idx:end_idx] = outp
+            epoch_results['labels'][start_idx:end_idx] = labels
 
             # Clip the norm of the gradients to 1.0.
             # This is to help prevent the "exploding gradients" problem.
@@ -98,11 +127,21 @@ def train(model, device, train_loader, loss_function, optimizer, epochs, schedul
 
             # Update the learning rate.
             scheduler.step()
+            
+            if verbose:
+                if batch_idx % 10 == 0:
+                    print(f'Train Epoch:', epoch, 'batch:',
+                        batch_idx, 'loss:',
+                        loss.mean())
 
-            if batch_idx % 10 == 0:
-                print(f'Train Epoch:', epoch, 'batch:',
-                    batch_idx, 'loss:',
-                    loss.mean())
+        #TODO compute metrics
+        results['metrics'] = compute_metrics(epoch_results['predicted'], epoch_results['labels'], metrics)
+        results['loss'][epoch] = torch.mean(epoch_results['loss'], 0)
+        results['predicted'][epoch] = epoch_results['predicted']
+        results['labels'][epoch] = epoch_results['labels']
+                                 
+    return results        
+            
                 
 def test(model, device, test_loader, loss_function, metric):
     model.train()
@@ -130,8 +169,33 @@ def test(model, device, test_loader, loss_function, metric):
             labels = labels.cpu()
             outp = outp.cpu()
             loss = loss.cpu()
-            predictions['labels'].append(labels[0].tolist())
-            predictions['predicted'].append(outp[0].tolist())
-            predictions['losses'].append(loss.tolist())
+            #predictions['labels'].append(labels[0].tolist())
+            #predictions['predicted'].append(outp[0].tolist())
+            #predictions['losses'].append(loss.tolist())
             
-    return predictions
+            
+    #labels = np.array(predictions['labels'])
+    #predicted = np.array(predictions['predicted'])
+
+    # Threshold
+    #labels[labels >= 0.5] = 1
+    #labels[labels < 0.5] = 0
+    #predicted[predicted >= 0.5] = 1
+    #predicted[predicted < 0.5] = 0
+            
+    #return metric(labels, predicted)
+    
+    
+def compute_metrics(predicted, expected, metrics):
+    
+    predicted = predicted.cpu().data.numpy()
+    expected = expected.cpu().data.numpy()
+    
+    metric_results = {}
+    
+    if "accuracy" in metrics:
+        res = np.array(predicted)
+        labels = np.array()
+        metric_results['accuracy'] = accuracy_score(predicted, expected)
+    #if "map" in metrics:
+        

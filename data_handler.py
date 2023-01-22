@@ -34,8 +34,7 @@ Returns:
     df: edited dataframe
 '''
 def __get_dataset(df):
-    # Drop all useless columns
-    df.drop(['arg_id', 'key_point_id', 'stance'], axis=1, inplace=True)
+
     # Cast labels in float type
     df['label'] = df['label'].astype('float')
     # Shuffle the examples
@@ -51,8 +50,6 @@ Returns:
     df: edited dataframe
 '''
 def concatenate_topics(df):
-    # No duplicates code
-    input_args = df['argument'].tolist()
 
     # creating a list of keypoints for each topic
     input_kp = df['key_point'].tolist()
@@ -61,15 +58,12 @@ def concatenate_topics(df):
     # appending topic to each vector
     for i, _ in enumerate(input_kp):
         input_kp[i] = topics[i] + " " + input_kp[i]
-
-    # create a list of labels
-    expected_res = df['label'].tolist()
-
-    df = pd.DataFrame({'args': input_args,
-        'key_points': input_kp,
-        'labels': expected_res
-    })
-
+    
+    df['key_points'] = input_kp
+    df.drop(columns=['key_point', 'topic'], inplace=True)
+    
+    df.reset_index(inplace=True)
+    
     return df
 
 '''
@@ -99,8 +93,8 @@ def split_train_data(df, perc_split=0.8):
     val = df[df['label'] == 0][zero_train:zero_train + zero_val]
     val = pd.concat([val, df[df['label'] == 1][one_train : one_train+one_val]])
 
-    train = train[['argument', 'key_point', 'topic', 'label']]
-    val = val[['argument', 'key_point', 'topic', 'label']]
+    #train = train[['argument', 'key_point', 'topic', 'label']]
+    #val = val[['argument', 'key_point', 'topic', 'label']]
 
     return train, val
 
@@ -114,7 +108,7 @@ Returns:
     input_ids: input_ids of the tokenized sentences
     attention_masks: attention masks of the tokenized sentences
 '''
-def tokenization(sentences, tokenizer, labels=None):
+def tokenization(sentences, tokenizer, max_length=512, labels=None):
      # Tokenize all of the sentences and map the tokens to thier word IDs.
         input_ids = []
         attention_masks = []
@@ -131,7 +125,7 @@ def tokenization(sentences, tokenizer, labels=None):
             encoding = tokenizer.encode_plus(
                               sent,                      # Sentence to encode.
                               add_special_tokens = True, # Add '[CLS]' and '[SEP]'
-                              max_length = 512,           # Pad & truncate all sentences.
+                              max_length = max_length,   # Pad & truncate all sentences.
                               pad_to_max_length = True,
                               return_attention_mask = True,   # Construct attn. masks.
                               return_tensors = 'pt',     # Return pytorch tensors.
@@ -162,11 +156,11 @@ Param:
 Returns:
     tokenized: a list composed by tokenized arguments (dict), tokenized key points (dict) and tokenized labels (list)
 '''
-def tokenize_df(df, tokenizer):
-    input_id_args, attention_masks_args, labels = tokenization(df['args'], tokenizer, labels = df['labels'])
-    input_id_kps, attention_masks_kps = tokenization(df['key_points'], tokenizer)
+def tokenize_df(df, tokenizer, max_length=512):
+    input_id_args, attention_masks_args, labels = tokenization(df['argument'], tokenizer, labels = df['label'], max_length=max_length)
+    input_id_kps, attention_masks_kps = tokenization(df['key_points'], tokenizer, max_length=max_length)
 
-    tokenized = [ { 'arg':{
+    tokenized = [ { 'argument':{
             'input_ids': input_id_args[i],
             'attention_masks' : attention_masks_args[i]
             }, 
