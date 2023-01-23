@@ -67,13 +67,13 @@ class SiameseNetwork(nn.Module):
     def get_smart_batching_collate(self):
         return self.model.smart_batching_collate
 
-def train(model, device, train_loader, loss_function, optimizer, epochs, scheduler, verbose=False):
+def train(model, device, train_loader, loss_function, optimizer, epochs, scheduler, metrics, verbose=False):
     model.train()
     
     loss_function.to(device)
     results = {'loss': torch.zeros([epochs,1]),
-              'predicted': torch.zeros([epochs,1]),
-              'labels': torch.zeros([epochs,1])
+              'predicted': torch.zeros([epochs,len(train_loader.dataset)]),
+              'labels': torch.zeros([epochs,len(train_loader.dataset)])
               }
     
     results = {k:v.to(device) for k,v in results.items()}
@@ -92,7 +92,7 @@ def train(model, device, train_loader, loss_function, optimizer, epochs, schedul
         for batch_idx, (encodings) in enumerate(train_loader):
 
             # Extract arguments, key_points and labels all from the same batch
-            args = {k:v.to(device) for k,v in encodings['arg'].items()}
+            args = {k:v.to(device) for k,v in encodings['argument'].items()}
 
             kps = {k:v.to(device) for k,v in encodings['kp'].items()}
 
@@ -134,28 +134,34 @@ def train(model, device, train_loader, loss_function, optimizer, epochs, schedul
                         batch_idx, 'loss:',
                         loss.mean())
 
-        #TODO compute metrics
+        
         results['metrics'] = compute_metrics(epoch_results['predicted'], epoch_results['labels'], metrics)
+        
         results['loss'][epoch] = torch.mean(epoch_results['loss'], 0)
         results['predicted'][epoch] = epoch_results['predicted']
         results['labels'][epoch] = epoch_results['labels']
                                  
-    return results        
+    return results
             
                 
-def test(model, device, test_loader, loss_function, metric):
+def test(model, device, test_loader, loss_function, metrics):
     model.train()
     
     loss_function.to(device)
     
-    predictions = {'labels':[], 'predicted':[], 'losses':[]}
+    results = {'labels': torch.zeros([len(test_loader),1]),
+               'predicted':torch.zeros([len(test_loader),1]),
+               'loss':torch.zeros([len(test_loader),1])
+              }
+    
+    results = {k:v.to(device) for k,v in results.items()}
     
     
     with torch.no_grad():
         for batch_idx, (encodings) in enumerate(test_loader):
 
             # Extract arguments, key_points and labels all from the same batch
-            args = {k:v.to(device) for k,v in encodings['arg'].items()}
+            args = {k:v.to(device) for k,v in encodings['argument'].items()}
 
             kps = {k:v.to(device) for k,v in encodings['kp'].items()}
 
@@ -166,36 +172,34 @@ def test(model, device, test_loader, loss_function, metric):
 
             loss = loss_function(outp.float(), labels.float())
             
-            labels = labels.cpu()
-            outp = outp.cpu()
-            loss = loss.cpu()
-            #predictions['labels'].append(labels[0].tolist())
-            #predictions['predicted'].append(outp[0].tolist())
-            #predictions['losses'].append(loss.tolist())
+            results['labels'][batch_idx] = labels
+            results['predicted'][batch_idx] = outp
+            results['loss'][batch_idx] = loss
+    
+    results['metrics'] = compute_metrics(results['predicted'], results['labels'], metrics)
             
-            
-    #labels = np.array(predictions['labels'])
-    #predicted = np.array(predictions['predicted'])
-
-    # Threshold
-    #labels[labels >= 0.5] = 1
-    #labels[labels < 0.5] = 0
-    #predicted[predicted >= 0.5] = 1
-    #predicted[predicted < 0.5] = 0
-            
-    #return metric(labels, predicted)
+    return results
     
     
 def compute_metrics(predicted, expected, metrics):
     
-    predicted = predicted.cpu().data.numpy()
-    expected = expected.cpu().data.numpy()
+    #TODO add challenge metrics
+    if torch.is_tensor(predicted):
+        predicted = predicted.cpu().data.numpy()
+        
+    if torch.is_tensor(expected):
+        expected = expected.cpu().data.numpy()
     
     metric_results = {}
     
     if "accuracy" in metrics:
-        res = np.array(predicted)
-        labels = np.array()
-        metric_results['accuracy'] = accuracy_score(predicted, expected)
+        
+        # Threshold
+        predicted[predicted >= 0.5] = 1
+        predicted[predicted < 0.5] = 0
+    
+        metric_results['accuracy'] = accuracy_score(expected, predicted)
     #if "map" in metrics:
+    
+    return metric_results
         
