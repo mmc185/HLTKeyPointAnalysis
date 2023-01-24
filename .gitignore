@@ -5,3 +5,4 @@ venv2
 .ipynb_checkpoints
 instructions.md
 __pycache__
+dataset
