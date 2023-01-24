@@ -38,7 +38,7 @@ def __get_dataset(df):
     # Cast labels in float type
     df['label'] = df['label'].astype('float')
     # Shuffle the examples
-    df = df.sample(frac=1, random_state=1).reset_index(drop=True)
+    #df = df.sample(frac=1, random_state=1).reset_index(drop=True)
 
     return df
 

@@ -183,7 +183,7 @@ def test(model, device, test_loader, loss_function, metrics):
     
 def compute_metrics(predicted, expected, metrics):
     
-    #TODO add challenge metrics
+    #TODO add precision, recall, F1 score
     if torch.is_tensor(predicted):
         predicted = predicted.cpu().data.numpy()
         
@@ -202,4 +202,32 @@ def compute_metrics(predicted, expected, metrics):
     #if "map" in metrics:
     
     return metric_results
-        
+
+def extract_challenge_metrics(predictions, labels_df, arg_df, kp_df):
+    
+    np_predicted = predicted.data.numpy()
+    np_predicted = np_predicted.T
+    
+    pred_dict = {}
+    # Dict example {
+    #                "arg_15_0": {
+    #                    "kp_15_0": 0.8282181024551392, 
+    #                    "kp_15_2": 0.9438725709915161
+    #                }, 
+    #               "arg_15_1": {
+    #                    "kp_15_0": 0.9994438290596008, 
+    #                    "kp_15_2":0
+    #                }
+    #              }
+    for idx, pred in enumerate(np_predicted):
+            row = labels_df.iloc[idx]
+            arg_id = row['arg_id']
+            kp_id = row['key_point_id']
+            if arg_id not in pred_dict.keys():
+                pred_dict[arg_id] = {}
+            pred_dict[arg_id][kp_id] = pred[0]
+    
+    merged_df = get_predictions(pred_dict, labels_df, arg_df, kp_df)
+    evaluate_predictions(merged_df)
+    
+#TODO call metrics computation in the grid search and not in train/test
