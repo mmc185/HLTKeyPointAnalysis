@@ -6,40 +6,48 @@ Load data from a csv file
 Params:
     path: foder path where the file is saved
     filename_train: filename to the training set (could be empty)
+    filename_dev: filename to the development set (could be empty)
     filename_test: filename to the test set (could be empty)
     sep_char: separator char in the indicated csv
 Returns:
     train: training dataframe
+    dev: development dataframe
     test: test dataframe
 '''
-def load(path = "", filename_train = "", filename_test = "", sep_char=';'):
+def load(path = "", filename_train = "", filename_dev = "", filename_test = "", sep_char=';', shuffle = False):
 
     train = None
+    dev = None
     test = None
 
     if filename_train != "":
         train = pd.read_csv(path+filename_train, sep=sep_char)
-        train = __get_dataset(train)
+        train = __get_dataset(train, shuffle)
+    if filename_dev != "":
+        dev = pd.read_csv(path+filename_dev, sep=sep_char)
+        dev = __get_dataset(dev, shuffle)
     if filename_test != "":
         test = pd.read_csv(path+filename_test, sep=sep_char)
-        test = __get_dataset(test)
+        test = __get_dataset(test, shuffle)
 
-    return train, test
+    return train, dev, test
 
 '''
-Private method used to clear the dataset from all the useless columns and to shuffle data
+Private method used to clear the dataset from all the useless columns
 Params:
     df: dataframe to edit
 Returns:
     df: edited dataframe
 '''
-def __get_dataset(df):
+def __get_dataset(df, shuffle=False):
 
     # Cast labels in float type
     df['label'] = df['label'].astype('float')
+    
     # Shuffle the examples
-    #df = df.sample(frac=1, random_state=1).reset_index(drop=True)
-
+    if shuffle:
+        df = df.sample(frac=1, random_state=1).reset_index(drop=True)
+        
     return df
 
 '''

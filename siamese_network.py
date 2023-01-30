@@ -4,7 +4,7 @@ from transformers import BertModel
 from sentence_transformers import util
 from torch.optim.lr_scheduler import StepLR
 import numpy as np
-from sklearn.metrics import accuracy_score
+from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
 
 class SiameseNetwork(nn.Module):
     """
@@ -67,7 +67,7 @@ class SiameseNetwork(nn.Module):
     def get_smart_batching_collate(self):
         return self.model.smart_batching_collate
 
-def train(model, device, train_loader, loss_function, optimizer, epochs, scheduler, metrics, verbose=False):
+def train(model, device, train_loader, loss_function, optimizer, epochs, scheduler, verbose=False):
     model.train()
     
     loss_function.to(device)
@@ -86,8 +86,6 @@ def train(model, device, train_loader, loss_function, optimizer, epochs, schedul
         }
         
         epoch_results = {k:v.to(device) for k,v in epoch_results.items()}
-        
-        #TODO compute metrics for each epoch and return the mean of each metric
         
         for batch_idx, (encodings) in enumerate(train_loader):
 
@@ -134,17 +132,18 @@ def train(model, device, train_loader, loss_function, optimizer, epochs, schedul
                         batch_idx, 'loss:',
                         loss.mean())
 
-        
-        results['metrics'] = compute_metrics(epoch_results['predicted'], epoch_results['labels'], metrics)
+        #TODO check this row
+        #results['metrics'] = compute_metrics(epoch_results['predicted'], epoch_results['labels'], metrics)
         
         results['loss'][epoch] = torch.mean(epoch_results['loss'], 0)
         results['predicted'][epoch] = epoch_results['predicted']
-        results['labels'][epoch] = epoch_results['labels']
+        
+    results['labels'] = epoch_results['labels']
                                  
     return results
             
                 
-def test(model, device, test_loader, loss_function, metrics):
+def test(model, device, test_loader, loss_function):
     model.train()
     
     loss_function.to(device)
@@ -176,36 +175,44 @@ def test(model, device, test_loader, loss_function, metrics):
             results['predicted'][batch_idx] = outp
             results['loss'][batch_idx] = loss
     
-    results['metrics'] = compute_metrics(results['predicted'], results['labels'], metrics)
+    #results['metrics'] = compute_metrics(results['predicted'], results['labels'], metrics)
             
     return results
     
     
 def compute_metrics(predicted, expected, metrics):
     
-    #TODO add precision, recall, F1 score
     if torch.is_tensor(predicted):
         predicted = predicted.cpu().data.numpy()
+        pred = predicted.copy().T
         
     if torch.is_tensor(expected):
         expected = expected.cpu().data.numpy()
+        expected = expected.T
     
     metric_results = {}
     
-    if "accuracy" in metrics:
+    # Threshold
+    pred[pred >= 0.5] = 1
+    pred[pred < 0.5] = 0
         
-        # Threshold
-        predicted[predicted >= 0.5] = 1
-        predicted[predicted < 0.5] = 0
+    if "accuracy" in metrics:
+        metric_results['accuracy'] = accuracy_score(expected, pred)
+        
+    if "precision" in metrics:
+        metric_results['precision'] = precision_score(expected, pred)
     
-        metric_results['accuracy'] = accuracy_score(expected, predicted)
-    #if "map" in metrics:
+    if "recall" in metrics:
+        metric_results['recall'] = recall_score(expected, pred)
+        
+    if "f1" in metrics:
+        metric_results['f1'] = f1_score(expected, pred)
     
     return metric_results
 
 def extract_challenge_metrics(predictions, labels_df, arg_df, kp_df):
     
-    np_predicted = predicted.data.numpy()
+    np_predicted = predictions.cpu().data.numpy()
     np_predicted = np_predicted.T
     
     pred_dict = {}
@@ -230,4 +237,3 @@ def extract_challenge_metrics(predictions, labels_df, arg_df, kp_df):
     merged_df = get_predictions(pred_dict, labels_df, arg_df, kp_df)
     evaluate_predictions(merged_df)
     
-#TODO call metrics computation in the grid search and not in train/test

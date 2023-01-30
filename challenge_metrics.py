@@ -104,15 +104,3 @@ def load_predictions(predictions_dict, correct_kp_list):
             scores.append(best_kp[1])
     print(f"\tloaded predictions for {len(arg)} arguments")
     return pd.DataFrame({"arg_id" : arg, "key_point_id": kp, "score": scores})
-
-#if __name__ == "__main__":
-#    if len(sys.argv) != 3:
-#        print("You must specify two parameters for this scripts: input data directory and the predictions file")
-#    else:
-#        gold_data_dir = sys.argv[1]
-#        predictions_file = sys.argv[2]
-
-#        arg_df, kp_df, labels_df = load_kpm_data(gold_data_dir, subset="dev")
-
-#        merged_df = get_predictions(predictions_file, labels_df, arg_df, kp_df)
-#        evaluate_predictions(merged_df)

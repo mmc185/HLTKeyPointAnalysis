@@ -5,4 +5,9 @@ venv2
 .ipynb_checkpoints
 instructions.md
 __pycache__
-dataset
+dataset/arguments_dev.csv
+dataset/arguments_train.csv
+dataset/key_points_dev.csv
+dataset/key_points_train.csv
+dataset/labels_dev.csv
+dataset/labels_train.csv
