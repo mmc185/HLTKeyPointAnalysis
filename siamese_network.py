@@ -5,6 +5,7 @@ from sentence_transformers import util
 from torch.optim.lr_scheduler import StepLR
 import numpy as np
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
+from challenge_metrics import get_predictions, evaluate_predictions
 
 class SiameseNetwork(nn.Module):
     """
@@ -232,7 +233,7 @@ def extract_challenge_metrics(predictions, labels_df, arg_df, kp_df):
             kp_id = row['key_point_id']
             if arg_id not in pred_dict.keys():
                 pred_dict[arg_id] = {}
-            pred_dict[arg_id][kp_id] = pred[0]
+            pred_dict[arg_id][kp_id] = pred
     
     merged_df = get_predictions(pred_dict, labels_df, arg_df, kp_df)
     evaluate_predictions(merged_df)
