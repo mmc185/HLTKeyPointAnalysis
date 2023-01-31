@@ -99,6 +99,7 @@ def grid_search(train_data, val_data, model_type, params, metrics, device):
         
         model = SiameseNetwork(bert_type=BertModel.from_pretrained(model_type))
         model.to(device)
+        print(5+2)
         
         train_loader = DataLoader(train_data, batch_size=res_dict['batch_size'], pin_memory=True)
         
@@ -121,19 +122,27 @@ def grid_search(train_data, val_data, model_type, params, metrics, device):
         
         train_res = train(model, device, train_loader, res_dict['loss'], optimizer, res_dict['epochs'], scheduler, verbose=False)
         
+        res_dict['train'] = train_res
+        
         res_dict['train_metrics'] = [None] * len(train_res['predicted'])
+        res_dict['train_challenge_metrics'] = [None] * len(train_res['predicted'])
+        
         for i, elem in enumerate(train_res['predicted']):
             res_dict['train_metrics'][i] = compute_metrics(elem, train_res['labels'], metrics)
             res_dict['train_challenge_metrics'][i] = extract_challenge_metrics(elem, train_labels_df, train_arg_df, train_kp_df)
+        
             
             
         val_loader = DataLoader(val_data, pin_memory=True)
         val_res = test(model, device, val_loader, res_dict['loss'])
-        for i, elem in enumerate(train_res['predicted']):
-            res_dict['val_metrics'][i] = compute_metrics(elem, val_res['labels'][i], metrics)
-            res_dict['val_challenge_metrics'][i] = extract_challenge_metrics(elem, val_labels_df, val_arg_df, val_kp_df)
         
-
+        res_dict['val'] = val_res
+        
+        res_dict['val_metrics'] = compute_metrics(val_res['predicted'].T, val_res['labels'].T, metrics)
+        res_dict['val_challenge_metrics'] = extract_challenge_metrics(val_res['predicted'].T, val_labels_df, val_arg_df, val_kp_df)
+        
+        
         res_vec.append(res_dict)
         
-    return res_vec
+    return res_vec   
+        

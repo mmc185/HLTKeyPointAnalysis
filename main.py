@@ -41,3 +41,5 @@ params = {
     'warmup_steps': [0,1e1,1e2,1e3],
     'weight_decay': [1e-1, 1e-2, 1e-5]
 }
+
+results = grid_search(tokenized_tr, tokenized_val, 'bert-base-uncased', params, ['accuracy', 'precision', 'recall', 'f1'], device)
