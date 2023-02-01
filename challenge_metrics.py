@@ -28,6 +28,7 @@ def evaluate_predictions(merged_df):
     mAP_strict = calc_mean_average_precision(merged_df, "label_strict")
     mAP_relaxed = calc_mean_average_precision(merged_df, "label_relaxed")
     print(f"mAP strict= {mAP_strict} ; mAP relaxed = {mAP_relaxed}")
+    return mAP_strict, mAP_relaxed
 
 def load_kpm_data(gold_data_dir, subset, submitted_kp_file=None):
     print("\nֿ** loading task data:")

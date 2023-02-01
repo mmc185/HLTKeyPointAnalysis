@@ -35,11 +35,31 @@ params = {
     'batch_size': [4, 8],
     'loss': [torch.nn.MSELoss()],
     'optimizer': ['adam'],
-    'lr': [1e-3, 1e-4, 1e-5, 1e-6, 1e-7, 1e-8],
-    'eps': [1e-8, 1e-6, 1e-7, 1e-10],
-    'epochs': [2, 3, 4],
-    'warmup_steps': [0,1e1,1e2,1e3],
-    'weight_decay': [1e-1, 1e-2, 1e-5]
+    'lr': [1e-3, 1e-5, 1e-7],
+    'eps': [1e-8, 1e-6],
+    'epochs': [4],
+    'warmup_steps': [0,1e1,1e2],
+    'weight_decay': [1e-1, 1e-5]
 }
 
 results = grid_search(tokenized_tr, tokenized_val, 'bert-base-uncased', params, ['accuracy', 'precision', 'recall', 'f1'], device)
+
+results_dict = {
+    'params':[],
+    'train_metrics':[],
+    'train_challenge_metrics': [],
+    'val_metrics': [],
+    'val_challenge_metrics': []
+}
+
+for i, res in enumerate(results):
+    params_string = f"batch_size {res['batch_size']}, loss {res['loss']}, optimizer {res['optimizer']}, lr {res['lr']}, eps {res['eps']}, epochs {res['epochs']}, warmup_steps {res['warmup_steps']}, weight_decay {res['weight_decay']}"
+    results_dict['params'].append(params_string)
+    results_dict['train_metrics'].append(res['train_metrics'])
+    results_dict['train_challenge_metrics'].append(res['train_challenge_metrics'])
+    results_dict['val_metrics'].append(res['val_metrics'])
+    results_dict['val_challenge_metrics'].append(res['val_challenge_metrics'])
+    
+df=pd.DataFrame(results_dict)
+
+df.to_csv('task1_grid_results.csv', sep='#')

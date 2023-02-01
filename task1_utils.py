@@ -14,6 +14,8 @@ import matplotlib.pyplot as plt
 import pandas as pd
 from tqdm import tqdm
 import itertools as it
+from challenge_metrics import get_predictions, evaluate_predictions
+
 
 
 def compute_metrics(predicted, expected, metrics):
@@ -48,7 +50,7 @@ def compute_metrics(predicted, expected, metrics):
 
 def extract_challenge_metrics(predictions, labels_df, arg_df, kp_df):
     
-    np_predicted = predictions.data.numpy()
+    np_predicted = predictions.cpu().data.numpy()
     np_predicted = np_predicted.T
     
     pred_dict = {}
@@ -68,10 +70,10 @@ def extract_challenge_metrics(predictions, labels_df, arg_df, kp_df):
             kp_id = row['key_point_id']
             if arg_id not in pred_dict.keys():
                 pred_dict[arg_id] = {}
-            pred_dict[arg_id][kp_id] = pred[0]
+            pred_dict[arg_id][kp_id] = pred
     
     merged_df = get_predictions(pred_dict, labels_df, arg_df, kp_df)
-    evaluate_predictions(merged_df)
+    return evaluate_predictions(merged_df)
     
 def grid_search(train_data, val_data, model_type, params, metrics, device):
     
@@ -97,9 +99,10 @@ def grid_search(train_data, val_data, model_type, params, metrics, device):
             'weight_decay' : combo_list[i][7]
         }
         
+        print(res_dict)
+        
         model = SiameseNetwork(bert_type=BertModel.from_pretrained(model_type))
         model.to(device)
-        print(5+2)
         
         train_loader = DataLoader(train_data, batch_size=res_dict['batch_size'], pin_memory=True)
         
