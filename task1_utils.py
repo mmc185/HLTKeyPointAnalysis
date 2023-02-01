@@ -15,7 +15,7 @@ import pandas as pd
 from tqdm import tqdm
 import itertools as it
 from challenge_metrics import get_predictions, evaluate_predictions
-
+from os import path
 
 
 def compute_metrics(predicted, expected, metrics):
@@ -146,6 +146,27 @@ def grid_search(train_data, val_data, model_type, params, metrics, device):
         
         
         res_vec.append(res_dict)
+        
+        results_dict = {
+            'params':[],
+            'train_metrics':[],
+            'train_challenge_metrics': [],
+            'val_metrics': [],
+            'val_challenge_metrics': []
+        }
+        
+        params_string = f"batch_size {res_vec['batch_size']}, loss {res_vec['loss']}, optimizer {res_vec['optimizer']}, lr {res_vec['lr']}, eps {res_vec['eps']}, epochs {res_vec['epochs']}, warmup_steps {res_vec['warmup_steps']}, weight_decay {res_vec['weight_decay']}"
+        
+        results_dict['params'].append(params_string)
+        results_dict['train_metrics'].append(res_vec['train_metrics'])
+        results_dict['train_challenge_metrics'].append(res_vec['train_challenge_metrics'])
+        results_dict['val_metrics'].append(res_vec['val_metrics'])
+        results_dict['val_challenge_metrics'].append(res_vec['val_challenge_metrics'])
+
+        df=pd.DataFrame(results_dict)
+
+        df.to_csv('task1_grid_results.csv', mode='a', sep='#', index=False, header=False if path.exists("task1_grid_results.csv") else True)
+        
         
     return res_vec   
         
