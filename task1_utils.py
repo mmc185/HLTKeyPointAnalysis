@@ -16,7 +16,7 @@ from tqdm import tqdm
 import itertools as it
 from challenge_metrics import get_predictions, evaluate_predictions
 from os import path
-
+import gc
 
 def compute_metrics(predicted, expected, metrics):
     
@@ -85,10 +85,12 @@ def grid_search(train_data, val_data, model_type, params, metrics, device):
 
     
     res_vec = []
+    results_dict = {}
     
     for i in tqdm(range(len(combo_list))):
         
         res_dict = {
+            'model_type': model_type,
             'batch_size': combo_list[i][0],
             'loss': combo_list[i][1],
             'optimizer': combo_list[i][2],
@@ -96,7 +98,10 @@ def grid_search(train_data, val_data, model_type, params, metrics, device):
             'eps': combo_list[i][4],
             'epochs': combo_list[i][5],
             'warmup_steps': combo_list[i][6],
-            'weight_decay' : combo_list[i][7]
+            'weight_decay' : combo_list[i][7],
+            'CLS': 'No',
+            'momentum' : combo_list[i][8],
+            'nesterov' : combo_list[i][9],
         }
         
         print(res_dict)
@@ -108,11 +113,24 @@ def grid_search(train_data, val_data, model_type, params, metrics, device):
         
         optimizer=res_dict['optimizer']
         
-        if(optimizer == 'adam'):
+        if(optimizer == 'adamW'):
             optimizer= torch.optim.AdamW(model.parameters(),
                   lr = res_dict['lr'], 
-                  eps = res_dict['eps'] 
+                  eps = res_dict['eps'],
+                  weight_decay = res_dict['weight_decay']
         )
+        elif (optimizer == 'sgd'):
+            optimizer = torch.optim.SGD(model.parameters(),
+                                       lr = res_dict['lr'],
+                                       momentum = res_dict['momentum'],
+                                       nesterov = res_dict['nesterov']
+        )
+        elif (optimizer == 'adam'):
+            optimizer= torch.optim.AdamW(model.parameters(),
+                      lr = res_dict['lr'], 
+                      eps = res_dict['eps'],
+                      weight_decay = res_dict['weight_decay']
+            )    
             
         # Total number of training steps is [number of batches] x [number of epochs]. 
         # (Note that this is not the same as the number of training samples).
@@ -147,26 +165,18 @@ def grid_search(train_data, val_data, model_type, params, metrics, device):
         
         res_vec.append(res_dict)
         
-        results_dict = {
-            'params':[],
-            'train_metrics':[],
-            'train_challenge_metrics': [],
-            'val_metrics': [],
-            'val_challenge_metrics': []
-        }
-        
-        params_string = f"batch_size {res_vec['batch_size']}, loss {res_vec['loss']}, optimizer {res_vec['optimizer']}, lr {res_vec['lr']}, eps {res_vec['eps']}, epochs {res_vec['epochs']}, warmup_steps {res_vec['warmup_steps']}, weight_decay {res_vec['weight_decay']}"
-        
-        results_dict['params'].append(params_string)
-        results_dict['train_metrics'].append(res_vec['train_metrics'])
-        results_dict['train_challenge_metrics'].append(res_vec['train_challenge_metrics'])
-        results_dict['val_metrics'].append(res_vec['val_metrics'])
-        results_dict['val_challenge_metrics'].append(res_vec['val_challenge_metrics'])
+        for key, val in res_dict.items():
+            if key not in results_dict:
+                results_dict[key] = []
+            results_dict[key].append(val)
 
         df=pd.DataFrame(results_dict)
 
         df.to_csv('task1_grid_results.csv', mode='a', sep='#', index=False, header=False if path.exists("task1_grid_results.csv") else True)
         
+        del model
+        torch.cuda.empty_cache()
+        gc.collect()
         
     return res_vec   
         

@@ -1,6 +1,6 @@
 import torch
 from torch import nn
-from transformers import BertModel
+from transformers import BertModel, AutoModel
 from sentence_transformers import util
 from torch.optim.lr_scheduler import StepLR
 import numpy as np
@@ -17,7 +17,7 @@ class SiameseNetwork(nn.Module):
         super(SiameseNetwork, self).__init__()
 
         if bert_type is None:
-            self.model = BertModel.from_pretrained("bert-base-uncased",
+            self.model = AutoModel.from_pretrained("bert-base-uncased",
                                           num_labels = 2)
         else:
             self.model = bert_type
@@ -58,8 +58,8 @@ class SiameseNetwork(nn.Module):
         output2 = self.forward_once(input2['input_ids'], input2['attention_masks'])
         
         # AVG of every token
-        output1 = torch.mean(output1, 1)
-        output2 = torch.mean(output2, 1)
+        output1 = torch.mean(output1[:, 1:, :], 1)
+        output2 = torch.mean(output2[:, 1:, :], 1)
 
         out = self.output_fun(output1, output2)
 
