@@ -118,7 +118,7 @@ def trainable(config_dict):
     tokenized_tr = data_handler.tokenize_df(config_dict['train_data'][columns_list], config_dict['tokenizer'], max_length=config_dict['max_length'])
     tokenized_val = data_handler.tokenize_df(config_dict['val_data'][columns_list], config_dict['tokenizer'], max_length=config_dict['max_length'])
     
-    train_loader = DataLoader(tokenized_tr, batch_size=config_dict['batch_size'], pin_memory=True)
+    train_loader = DataLoader(tokenized_tr, shuffle=True, batch_size=config_dict['batch_size'], pin_memory=True)
 
     optimizer=config_dict['optimizer']
 
