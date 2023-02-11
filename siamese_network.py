@@ -112,9 +112,17 @@ def train(model, device, train_loader, loss_function, optimizer, epochs, schedul
                 end_idx = len(train_loader.dataset)
                 
             epoch_results['loss'][batch_idx] = loss
-            epoch_results['predicted'][start_idx:end_idx] = outp
-            epoch_results['labels'][start_idx:end_idx] = labels
-
+            
+            # Saves predictions and targets in respective position
+            # of the epoch_results arrays, this has been done because the
+            # data shuffles at each iteration
+            j = 0
+            for i in range(0, len(encodings['id'])):
+                index = encodings['id'][i]
+                epoch_results['predicted'][index] = outp[j]
+                epoch_results['labels'][index] = labels[j]
+                j+=1
+                
             # Clip the norm of the gradients to 1.0.
             # This is to help prevent the "exploding gradients" problem.
             torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
@@ -137,6 +145,7 @@ def train(model, device, train_loader, loss_function, optimizer, epochs, schedul
         #results['metrics'] = compute_metrics(epoch_results['predicted'], epoch_results['labels'], metrics)
         
         results['loss'][epoch] = torch.mean(epoch_results['loss'], 0)
+        
         results['predicted'][epoch] = epoch_results['predicted']
         
     results['labels'] = epoch_results['labels']
