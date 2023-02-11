@@ -18,6 +18,12 @@ from challenge_metrics import get_predictions, evaluate_predictions
 from os import path
 import gc
 
+import ray
+from ray import air
+from ray import tune
+from ray.air import session
+
+
 def compute_metrics(predicted, expected, metrics):
     
     if torch.is_tensor(predicted):
@@ -77,106 +83,105 @@ def extract_challenge_metrics(predictions, labels_df, arg_df, kp_df):
     
 def grid_search(train_data, val_data, model_type, params, metrics, device):
     
-    train_arg_df, train_kp_df, train_labels_df = load_kpm_data("dataset/", subset="train")
-    val_arg_df, val_kp_df, val_labels_df = load_kpm_data("dataset/", subset="dev")
+    params['train_data'] = train_data
+    params['val_data'] = val_data
+    params['model_type'] = model_type
     
-    keys, values = zip(*params.items())
-    combo_list = list(it.product(*(values)))
+    #train_arg_df, train_kp_df, train_labels_df = load_kpm_data("dataset/", subset="train")
+    #val_arg_df, val_kp_df, val_labels_df = load_kpm_data("dataset/", subset="dev")
+    
+    params['train_kpm_data'] = load_kpm_data("dataset/", subset="train")
+    params['val_kpm_data'] = load_kpm_data("dataset/", subset="dev")
+    
+    params['device'] = device
+    
+    params['metrics'] = metrics
+        
+    tuner = tune.Tuner(tune.with_resources(trainable,
+                                          {"gpu":1}), 
+                       param_space = params, 
+                       run_config=air.RunConfig(name=params['optimizer'], verbose=1))
+    results = tuner.fit()
+
+    # Get a dataframe for the last reported results of all of the trials 
+    df = results.get_dataframe()
+
 
     
-    res_vec = []
-    results_dict = {}
+def trainable(config_dict):
     
-    for i in tqdm(range(len(combo_list))):
-        
-        res_dict = {
-            'model_type': model_type,
-            'batch_size': combo_list[i][0],
-            'loss': combo_list[i][1],
-            'optimizer': combo_list[i][2],
-            'lr': combo_list[i][3],
-            'eps': combo_list[i][4],
-            'epochs': combo_list[i][5],
-            'warmup_steps': combo_list[i][6],
-            'weight_decay' : combo_list[i][7],
-            'CLS': 'No',
-            'momentum' : combo_list[i][8],
-            'nesterov' : combo_list[i][9],
-        }
-        
-        print(res_dict)
-        
-        model = SiameseNetwork(bert_type=BertModel.from_pretrained(model_type))
-        model.to(device)
-        
-        train_loader = DataLoader(train_data, batch_size=res_dict['batch_size'], pin_memory=True)
-        
-        optimizer=res_dict['optimizer']
-        
-        if(optimizer == 'adamW'):
-            optimizer= torch.optim.AdamW(model.parameters(),
-                  lr = res_dict['lr'], 
-                  eps = res_dict['eps'],
-                  weight_decay = res_dict['weight_decay']
-        )
-        elif (optimizer == 'sgd'):
-            optimizer = torch.optim.SGD(model.parameters(),
-                                       lr = res_dict['lr'],
-                                       momentum = res_dict['momentum'],
-                                       nesterov = res_dict['nesterov']
-        )
-        elif (optimizer == 'adam'):
-            optimizer= torch.optim.AdamW(model.parameters(),
-                      lr = res_dict['lr'], 
-                      eps = res_dict['eps'],
-                      weight_decay = res_dict['weight_decay']
-            )    
-            
-        # Total number of training steps is [number of batches] x [number of epochs]. 
-        # (Note that this is not the same as the number of training samples).
-        total_steps = len(train_loader) * res_dict['epochs']
+    model = SiameseNetwork(bert_type=BertModel.from_pretrained(config_dict['model_type']))
+    model.to(config_dict['device'])
+    
+    #Tokenize data
+    columns_list = ['argument', 'key_points', 'label']
+    tokenized_tr = data_handler.tokenize_df(config_dict['train_data'][columns_list], config_dict['tokenizer'], max_length=config_dict['max_length'])
+    tokenized_val = data_handler.tokenize_df(config_dict['val_data'][columns_list], config_dict['tokenizer'], max_length=config_dict['max_length'])
+    
+    train_loader = DataLoader(tokenized_tr, batch_size=config_dict['batch_size'], pin_memory=True)
 
-        # Create the learning rate scheduler.
-        scheduler = get_linear_schedule_with_warmup(optimizer, 
-                                            num_warmup_steps = res_dict['warmup_steps'],
-                                            num_training_steps = total_steps)
-        
-        train_res = train(model, device, train_loader, res_dict['loss'], optimizer, res_dict['epochs'], scheduler, verbose=False)
-        
-        res_dict['train'] = train_res
-        
-        res_dict['train_metrics'] = [None] * len(train_res['predicted'])
-        res_dict['train_challenge_metrics'] = [None] * len(train_res['predicted'])
-        
-        for i, elem in enumerate(train_res['predicted']):
-            res_dict['train_metrics'][i] = compute_metrics(elem, train_res['labels'], metrics)
-            res_dict['train_challenge_metrics'][i] = extract_challenge_metrics(elem, train_labels_df, train_arg_df, train_kp_df)
-        
-            
-            
-        val_loader = DataLoader(val_data, pin_memory=True)
-        val_res = test(model, device, val_loader, res_dict['loss'])
-        
-        res_dict['val'] = val_res
-        
-        res_dict['val_metrics'] = compute_metrics(val_res['predicted'].T, val_res['labels'].T, metrics)
-        res_dict['val_challenge_metrics'] = extract_challenge_metrics(val_res['predicted'].T, val_labels_df, val_arg_df, val_kp_df)
-        
-        
-        res_vec.append(res_dict)
-        
-        for key, val in res_dict.items():
-            if key not in results_dict:
-                results_dict[key] = []
-            results_dict[key].append(val)
+    optimizer=config_dict['optimizer']
 
-        df=pd.DataFrame(results_dict)
+    if(optimizer == 'adamW'):
+        optimizer= torch.optim.AdamW(model.parameters(),
+              lr = config_dict['lr'], 
+              eps = config_dict['eps'],
+              weight_decay = config_dict['weight_decay']
+    )
+    elif (optimizer == 'sgd'):
+        optimizer = torch.optim.SGD(model.parameters(),
+                                   lr = config_dict['lr'],
+                                   momentum = config_dict['momentum'],
+                                   nesterov = config_dict['nesterov']
+    )
+    elif (optimizer == 'adam'):
+        optimizer= torch.optim.AdamW(model.parameters(),
+                  lr = config_dict['lr'], 
+                  eps = config_dict['eps'],
+                  weight_decay = config_dict['weight_decay']
+        )    
 
-        df.to_csv('task1_grid_results.csv', mode='a', sep='#', index=False, header=False if path.exists("task1_grid_results.csv") else True)
-        
-        del model
-        torch.cuda.empty_cache()
-        gc.collect()
-        
-    return res_vec   
-        
+    # Total number of training steps is [number of batches] x [number of epochs]. 
+    # (Note that this is not the same as the number of training samples).
+    total_steps = len(train_loader) * config_dict['epochs']
+
+    # Create the learning rate scheduler.
+    scheduler = get_linear_schedule_with_warmup(optimizer, 
+                                        num_warmup_steps = config_dict['warmup_steps'],
+                                        num_training_steps = total_steps)
+
+    train_res = train(model, config_dict['device'], train_loader, config_dict['loss'], optimizer, config_dict['epochs'], scheduler, verbose=False)
+
+    config_dict['train'] = train_res
+
+    config_dict['train_metrics'] = [None] * len(train_res['predicted'])
+    config_dict['train_challenge_metrics'] = [None] * len(train_res['predicted'])
+
+    for i, elem in enumerate(train_res['predicted']):
+        config_dict['train_metrics'][i] = compute_metrics(elem, train_res['labels'], config_dict['metrics'])
+        config_dict['train_challenge_metrics'][i] = extract_challenge_metrics(elem, config_dict['train_kpm_data'][2], config_dict['train_kpm_data'][0], config_dict['train_kpm_data'][1])
+
+
+
+    val_loader = DataLoader(tokenized_val, pin_memory=True)
+    val_res = test(model, config_dict['device'], val_loader, config_dict['loss'])
+
+    config_dict['val'] = val_res
+
+    config_dict['val_metrics'] = compute_metrics(val_res['predicted'].T, val_res['labels'].T, config_dict['metrics'])
+    config_dict['val_challenge_metrics'] = extract_challenge_metrics(val_res['predicted'].T, config_dict['val_kpm_data'][2], config_dict['val_kpm_data'][0], config_dict['val_kpm_data'][1])
+    
+    config_dict.pop('train_data')
+    config_dict.pop('val_data')
+    config_dict.pop('train_kpm_data')
+    config_dict.pop('val_kpm_data')
+    config_dict.pop('tokenizer')
+    config_dict.pop('device')
+    config_dict.pop('metrics')
+    
+    for key, value in config_dict.items():
+        config_dict[key] = [config_dict[key]]
+    
+    df=pd.DataFrame(config_dict)
+
+    df.to_csv('../../../HLTKeyPointAnalysis/task1_grid_results_with_ray.csv', mode='a', sep='#', index=False, header=False if path.exists("../../../HLTKeyPointAnalysis/task1_grid_results_with_ray.csv") else True)

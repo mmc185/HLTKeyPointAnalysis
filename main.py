@@ -15,6 +15,8 @@ from tqdm import tqdm
 import itertools as it
 import os
 
+from ray import tune
+
 os.environ["CUDA_VISIBLE_DEVICES"]="1"
 device = torch.device(0)
 
@@ -31,38 +33,43 @@ tokenizer = AutoTokenizer.from_pretrained(model_type, do_lower_case=True)
 
 max_length = 60
 # Tokenize data
-columns_list = ['argument', 'key_points', 'label']
-tokenized_tr = data_handler.tokenize_df(df_train[columns_list], tokenizer, max_length=max_length)
-tokenized_val = data_handler.tokenize_df(df_val[columns_list], tokenizer, max_length=max_length)
+#columns_list = ['argument', 'key_points', 'label']
+#tokenized_tr = data_handler.tokenize_df(df_train[columns_list], tokenizer, max_length=max_length)
+#tokenized_val = data_handler.tokenize_df(df_val[columns_list], tokenizer, max_length=max_length)
 
 """
 params = {
-    'batch_size': [8],
-    'loss': [torch.nn.MSELoss()],
-    'optimizer': ['sgd'],
-    'lr': [1e-3, 1e-5, 1e-7],
-    'eps': ['null'],
-    'epochs': [3],
-    'warmup_steps': [0, 1e1, 1e2],
-    'weight_decay': [0, 1e-1, 1e-5],
-    'momentum': [0, 2e-1, 6e-1],
-    'nesterov': [True, False]
+    'tokenizer': tokenizer,
+    'max_length': max_length,
+    'batch_size': 8,
+    'loss': torch.nn.MSELoss(),
+    'optimizer': 'sgd',
+    'lr': tune.grid_search([1e-3, 1e-5, 1e-7]),
+    'eps': 'null',
+    'epochs': 3,
+    'warmup_steps': tune.grid_search([0, 1e1, 1e2]),
+    'weight_decay': tune.grid_search([0, 1e-1, 1e-5]),
+    'momentum': tune.grid_search([0, 2e-1, 6e-1]),
+    'nesterov': False
 }
 """
+
 params = {
-    'batch_size': [8],
-    'loss': [torch.nn.MSELoss()],
-    'optimizer': ['sgd'],
-    'lr': [1e-5],
-    'eps': ['null'],
-    'epochs': [3],
-    'warmup_steps': [1e1],
-    'weight_decay': [1e-5],
-    'momentum': [6e-1],
-    'nesterov': [True]
+    'tokenizer': tokenizer,
+    'max_length': max_length,
+    'batch_size': 16,
+    'loss': torch.nn.MSELoss(),
+    'optimizer': 'sgd',
+    'lr': tune.grid_search([1e-5]),
+    'eps': 'null',
+    'epochs': 1,
+    'warmup_steps': tune.grid_search([1e1]),
+    'weight_decay': tune.grid_search([0]),
+    'momentum': tune.grid_search([2e-1]),
+    'nesterov': True
 }
 
 
-results = grid_search(tokenized_tr, tokenized_val, model_type, params, ['accuracy', 'precision', 'recall', 'f1'], device)
+results = grid_search(df_train, df_val, model_type, params, ['accuracy', 'precision', 'recall', 'f1'], device)
 
 
