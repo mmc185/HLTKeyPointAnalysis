@@ -135,7 +135,7 @@ def trainable(config_dict):
                                    nesterov = config_dict['nesterov']
     )
     elif (optimizer == 'adam'):
-        optimizer= torch.optim.AdamW(model.parameters(),
+        optimizer= torch.optim.Adam(model.parameters(),
                   lr = config_dict['lr'], 
                   eps = config_dict['eps'],
                   weight_decay = config_dict['weight_decay']
