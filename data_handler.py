@@ -168,7 +168,8 @@ def tokenize_df(df, tokenizer, max_length=512):
     input_id_args, attention_masks_args, labels = tokenization(df['argument'], tokenizer, labels = df['label'], max_length=max_length)
     input_id_kps, attention_masks_kps = tokenization(df['key_points'], tokenizer, max_length=max_length)
 
-    tokenized = [ { 'argument':{
+    tokenized = [ { 'id': i,
+        'argument':{
             'input_ids': input_id_args[i],
             'attention_masks' : attention_masks_args[i]
             }, 
