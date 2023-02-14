@@ -97,10 +97,11 @@ def grid_search(train_data, val_data, model_type, params, metrics, device):
     
     params['metrics'] = metrics
         
+    reporter = tune.CLIReporter(max_report_frequency=30)
     tuner = tune.Tuner(tune.with_resources(trainable,
                                           {"cpu":2, "gpu":1}), 
                        param_space = params, 
-                       run_config=air.RunConfig(name=params['optimizer'], verbose=1))
+                       run_config=air.RunConfig(name=params['optimizer'], verbose=1, progress_reporter=reporter))
     results = tuner.fit()
 
     # Get a dataframe for the last reported results of all of the trials 
