@@ -43,36 +43,19 @@ max_length = 60
 #tokenized_tr = data_handler.tokenize_df(df_train[columns_list], tokenizer, max_length=max_length)
 #tokenized_val = data_handler.tokenize_df(df_val[columns_list], tokenizer, max_length=max_length)
 
-"""
 params = {
     'tokenizer': tokenizer,
     'max_length': max_length,
     'batch_size': 8,
     'loss': torch.nn.MSELoss(),
     'optimizer': 'sgd',
-    'lr': tune.grid_search([1e-3, 1e-5, 1e-7]),
+    'lr': 1e-3,
     'eps': 'null',
-    'epochs': 3,
+    'epochs': 2,
     'warmup_steps': tune.grid_search([0, 1e1, 1e2]),
     'weight_decay': tune.grid_search([0, 1e-1, 1e-5]),
     'momentum': tune.grid_search([0, 2e-1, 6e-1]),
     'nesterov': False
-}
-"""
-
-params = {
-    'tokenizer': tokenizer,
-    'max_length': max_length,
-    'batch_size': tune.grid_search([64, 16]),
-    'loss': torch.nn.MSELoss(),
-    'optimizer': 'adam',
-    'lr': tune.grid_search([2e-5, 1e-5, 5e-5]),
-    'eps': 1e-8,
-    'epochs': 1,
-    'warmup_steps': tune.grid_search([0, 1e1, 1e2]),
-    'weight_decay': tune.grid_search([0, 1e-2, 1e-7]),
-    'momentum': 'null',
-    'nesterov': 'null'
 }
 
 

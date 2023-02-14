@@ -101,6 +101,7 @@ def grid_search(train_data, val_data, model_type, params, metrics, device):
     tuner = tune.Tuner(tune.with_resources(trainable,
                                           {"cpu":2, "gpu":1}), 
                        param_space = params, 
+                       tune_config = tune.tune_config.TuneConfig(reuse_actors = False),
                        run_config=air.RunConfig(name=params['optimizer'], verbose=1, progress_reporter=reporter))
     results = tuner.fit()
 
