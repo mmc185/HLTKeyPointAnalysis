@@ -110,6 +110,11 @@ def grid_search(train_data, val_data, model_type, params, metrics, device):
     
 def trainable(config_dict):
     
+    torch.cuda.empty_cache()
+    '''for gid in ray.get_gpu_ids():
+        # Previous trial may not have freed its memory yet, so wait to avoid OOM
+        ray.tune.utils.wait_for_gpu(gid)'''
+    
     model = SiameseNetwork(bert_type=BertModel.from_pretrained(config_dict['model_type']))
     model.to(config_dict['device'])
     
@@ -185,3 +190,4 @@ def trainable(config_dict):
     df=pd.DataFrame(config_dict)
 
     df.to_csv('../../../HLTKeyPointAnalysis/task1_grid_results_with_ray.csv', mode='a', sep='#', index=False, header=False if path.exists("../../../HLTKeyPointAnalysis/task1_grid_results_with_ray.csv") else True)
+    
