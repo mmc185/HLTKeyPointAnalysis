@@ -16,7 +16,7 @@ class SiameseNetwork(nn.Module):
     def __init__(self, model_type=None):
         super(SiameseNetwork, self).__init__()
 
-        if bert_type is None:
+        if model_type is None:
             self.model = AutoModel.from_pretrained("bert-base-uncased",
                                           num_labels = 2)
         else:
