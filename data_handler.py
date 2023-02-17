@@ -1,6 +1,25 @@
 import pandas as pd
 import torch
 
+def load_full_dataset(path, get_train=False, get_dev=False, get_test=False, sep_char='#', shuffle=False):
+    
+    train = None
+    dev = None
+    test = None
+
+    if get_train:
+        train1 = pd.read_csv(path+'train.csv', sep=sep_char)
+        train2 = pd.read_csv(path+'dev.csv', sep=sep_char)
+        train = pd.concat([train1, train2])
+        train.drop(columns=['arg_id', 'key_point_id', 'label'], inplace=True)
+    if get_dev:
+        dev = pd.read_csv(path+'test.csv', sep=sep_char)
+        dev.drop(columns=['arg_id', 'key_point_id', 'label'], inplace=True)
+    if get_test:
+        test = pd.read_csv(path+'test_IBM.csv', sep=sep_char)
+    
+    return train, dev, test
+
 '''
 Load data from a csv file
 Params:
@@ -57,20 +76,21 @@ Params:
 Returns:
     df: edited dataframe
 '''
-def concatenate_topics(df):
+def concatenate_topics(df, input_col='key_point', output_col='key_points'):
 
     # creating a list of keypoints for each topic
-    input_kp = df['key_point'].tolist()
+    input_data = df[input_col].tolist()
     topics = df['topic'].tolist()
 
     # appending topic to each vector
-    for i, _ in enumerate(input_kp):
-        input_kp[i] = topics[i] + " " + input_kp[i]
+    for i, _ in enumerate(input_data):
+        input_data[i] = topics[i] + " " + input_data[i]
     
-    df['key_points'] = input_kp
-    df.drop(columns=['key_point', 'topic'], inplace=True)
+    df.drop(columns=[input_col, 'topic'], inplace=True)
+    df[output_col] = input_data
     
     df.reset_index(inplace=True)
+    df.drop(columns=['index'], inplace=True)
     
     return df
 
