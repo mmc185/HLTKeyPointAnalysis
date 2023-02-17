@@ -1,6 +1,6 @@
 import torch
 from torch import nn
-from transformers import BertModel
+from transformers import BertModel, AutoModel
 from sentence_transformers import util
 from torch.optim.lr_scheduler import StepLR
 import numpy as np
@@ -117,7 +117,7 @@ def trainable(config_dict):
         # Previous trial may not have freed its memory yet, so wait to avoid OOM
         ray.tune.utils.wait_for_gpu(gid)'''
     
-    model = SiameseNetwork(bert_type=BertModel.from_pretrained(config_dict['model_type']))
+    model = SiameseNetwork(model_type=AutoModel.from_pretrained(config_dict['model_type']))
     model.to(config_dict['device'])
     
     #Tokenize data

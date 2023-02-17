@@ -13,14 +13,14 @@ class SiameseNetwork(nn.Module):
         The output of each network is concatenated and passed to a linear layer. 
         The output of the linear layer passed through a sigmoid function.
     """
-    def __init__(self, bert_type=None):
+    def __init__(self, model_type=None):
         super(SiameseNetwork, self).__init__()
 
-        if bert_type is None:
+        if model_type is None:
             self.model = AutoModel.from_pretrained("bert-base-uncased",
                                           num_labels = 2)
         else:
-            self.model = bert_type
+            self.model = model_type
 
         self.output_fun = torch.nn.CosineSimilarity()
         
