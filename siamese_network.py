@@ -62,6 +62,8 @@ class SiameseNetwork(nn.Module):
         output2 = torch.mean(output2[:, 1:, :], 1)
 
         out = self.output_fun(output1, output2)
+        
+        out[out < 0] = 0
 
         return out
 
