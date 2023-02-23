@@ -6,6 +6,7 @@ from torch.optim.lr_scheduler import StepLR
 import numpy as np
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
 from challenge_metrics import get_predictions, evaluate_predictions
+from sklearn.preprocessing import MinMaxScaler
 
 class SiameseNetwork(nn.Module):
     """
@@ -63,7 +64,10 @@ class SiameseNetwork(nn.Module):
 
         out = self.output_fun(output1, output2)
         
-        out[out < 0] = 0
+        out_min, out_max = -1, 1
+        new_min, new_max = 0, 1
+        out = (out - out_min)/(out_max - out_min)*(new_max - new_min) + new_min
+        #out = ((x - real_min)/(real_max-(real_min))) * (expec_max-expec_min) + expec_min
 
         return out
 
