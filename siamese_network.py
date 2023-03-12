@@ -46,7 +46,6 @@ class SiameseNetwork(nn.Module):
     def forward_once(self, input_ids, attention_masks):
         
         outputs = self.model(input_ids,
-                            token_type_ids = None,
                             attention_mask = attention_masks)
 
         last_hidden_states = outputs.last_hidden_state
@@ -63,11 +62,6 @@ class SiameseNetwork(nn.Module):
         output2 = torch.mean(output2[:, 1:, :], 1)
 
         out = self.output_fun(output1, output2)
-        
-        out_min, out_max = -1, 1
-        new_min, new_max = 0, 1
-        out = (out - out_min)/(out_max - out_min)*(new_max - new_min) + new_min
-        #out = ((x - real_min)/(real_max-(real_min))) * (expec_max-expec_min) + expec_min
 
         return out
 
