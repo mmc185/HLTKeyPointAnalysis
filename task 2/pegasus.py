@@ -27,9 +27,9 @@ class PegasusModel(nn.Module):
         #loss = outputs.loss
         return outputs #last_hidden_states
     
-    def generate(self, input_args):
+    def generate(self, input_args,attention_masks):
         
-        out_gen = self.model.generate(**input_args)
+        out_gen = self.model.generate(input_ids = input_args, attention_mask = attention_masks)
                            #, length_penalty=0.8, num_beams=8, max_length=128)
         
         return out_gen
