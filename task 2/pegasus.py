@@ -27,7 +27,7 @@ class PegasusModel(nn.Module):
         #loss = outputs.loss
         return outputs #last_hidden_states
     
-    def generate(self, input_args,attention_masks):
+    def generate(self, input_args, attention_masks):
         
         out_gen = self.model.generate(input_ids = input_args, attention_mask = attention_masks)
                            #, length_penalty=0.8, num_beams=8, max_length=128)
@@ -36,13 +36,13 @@ class PegasusModel(nn.Module):
         
 
         
-def train(model, device, train_loader, optimizer, epochs, loss_function, scheduler, verbose=False):
+def train(model, device, train_loader, optimizer, epochs, loss_function, scheduler, max_length, verbose=False):
     model.train()
     
     
     results = {'loss': torch.zeros([epochs,1]),
-              'predicted': torch.zeros([epochs,len(train_loader.dataset)]),
-              'labels': torch.zeros([epochs,len(train_loader.dataset)])
+              'predicted': torch.zeros([epochs,len(train_loader.dataset), max_length]),
+              'labels': torch.zeros([epochs,len(train_loader.dataset), max_length])
               }
     
     results = {k:v.to(device) for k,v in results.items()}
@@ -50,14 +50,17 @@ def train(model, device, train_loader, optimizer, epochs, loss_function, schedul
     for epoch in range(0, epochs):
         
         epoch_results = {'loss': torch.zeros([len(train_loader),1]),
-              'predicted': torch.zeros([len(train_loader.dataset)]),
-              'labels': torch.zeros([len(train_loader.dataset)])
+              'predicted': torch.zeros([len(train_loader.dataset), max_length]),
+              'labels': torch.zeros([len(train_loader.dataset), max_length])
         }
         
         epoch_results = {k:v.to(device) for k,v in epoch_results.items()}
         
+        idx_start = 0
+        idx_end = 0
+        
         for batch_idx, (encodings) in enumerate(train_loader):
-
+        
             # Extract arguments, key_points and labels all from the same batch
             input_ids = encodings['input_ids'].to(device)
             attention_mask = encodings['attention_mask'].to(device)
@@ -75,6 +78,7 @@ def train(model, device, train_loader, optimizer, epochs, loss_function, schedul
             if loss_function is None:
                 loss = outs.loss
             epoch_results['loss'][batch_idx] = loss
+            
             loss.backward()
                 
             # Clip the norm of the gradients to 1.0.
@@ -89,6 +93,22 @@ def train(model, device, train_loader, optimizer, epochs, loss_function, schedul
             # Update the learning rate.
             scheduler.step()
             
+            # Generate and save predictions
+            idx_start = batch_idx*encodings['input_ids'].shape[0]
+            if (batch_idx+1)*encodings['input_ids'].shape[0] > len(train_loader.dataset):
+                idx_end = len(train_loader.dataset)
+            else:
+                idx_end = (batch_idx+1)*encodings['input_ids'].shape[0]
+
+            generated_summaries = model.generate(input_args=input_ids, attention_masks=attention_mask)
+            
+            gen_len = generated_summaries.shape[1]
+            
+            epoch_results['predicted'][idx_start:idx_end, :gen_len] = generated_summaries
+            
+            print(epoch_results['predicted'])
+            epoch_results['labels'][idx_start:idx_end] = labels
+            
             if verbose:
                 if batch_idx % 10 == 0:
                     print(f'Train Epoch:', epoch, 'batch:',
@@ -97,13 +117,7 @@ def train(model, device, train_loader, optimizer, epochs, loss_function, schedul
 
                     
         results['loss'][epoch] = torch.mean(epoch_results['loss'], 0)
-        #TODO check this row
-        #results['metrics'] = compute_metrics(epoch_results['predicted'], epoch_results['labels'], metrics)
-        
-        #results['loss'][epoch] = torch.mean(epoch_results['loss'], 0)
-        
-        #results['predicted'][epoch] = epoch_results['predicted']
-        
-    #results['labels'] = epoch_results['labels']
+        results['predicted'][epoch] = epoch_results['predicted']        
+        results['labels'][epoch] = epoch_results['labels']
                                  
     return results

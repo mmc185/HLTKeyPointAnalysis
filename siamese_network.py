@@ -140,9 +140,6 @@ def train(model, device, train_loader, loss_function, optimizer, epochs, schedul
                     print(f'Train Epoch:', epoch, 'batch:',
                         batch_idx, 'loss:',
                         loss.mean())
-
-        #TODO check this row
-        #results['metrics'] = compute_metrics(epoch_results['predicted'], epoch_results['labels'], metrics)
         
         results['loss'][epoch] = torch.mean(epoch_results['loss'], 0)
         
@@ -154,7 +151,7 @@ def train(model, device, train_loader, loss_function, optimizer, epochs, schedul
             
                 
 def test(model, device, test_loader, loss_function):
-    model.train()
+    model.eval()
     
     loss_function.to(device)
     
