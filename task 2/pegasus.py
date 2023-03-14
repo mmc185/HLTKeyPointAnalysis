@@ -69,7 +69,6 @@ def train(model, device, train_loader, optimizer, epochs, loss_function, schedul
             decoder_attention_mask = encodings['decoder_attention_mask'].to(device)
             
             labels = encodings['labels'].to(device)
-
             optimizer.zero_grad()
             outs = model(input_ids, attention_mask, 
                          decoder_input_ids, decoder_attention_mask, 
@@ -103,11 +102,11 @@ def train(model, device, train_loader, optimizer, epochs, loss_function, schedul
             generated_summaries = model.generate(input_args=input_ids, attention_masks=attention_mask)
             
             gen_len = generated_summaries.shape[1]
+            labels_len = labels.shape[1]
             
             epoch_results['predicted'][idx_start:idx_end, :gen_len] = generated_summaries
             
-            print(epoch_results['predicted'])
-            epoch_results['labels'][idx_start:idx_end] = labels
+            epoch_results['labels'][idx_start:idx_end, :labels_len] = labels
             
             if verbose:
                 if batch_idx % 10 == 0:
