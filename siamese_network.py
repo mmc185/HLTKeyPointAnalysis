@@ -137,7 +137,7 @@ def train(model, device, train_loader, loss_function, optimizer, epochs, schedul
             
             if verbose:
                 if batch_idx % 10 == 0:
-                    print(f'Train Epoch:', epoch, 'batch:',
+                    print(f'Train Epoch:', epoch+1, 'batch:',
                         batch_idx, 'loss:',
                         loss.mean())
         
