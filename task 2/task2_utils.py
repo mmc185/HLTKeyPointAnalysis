@@ -11,28 +11,52 @@ import sys
 from transformers import AutoTokenizer, DataCollatorForSeq2Seq, get_linear_schedule_with_warmup
 from datasets import load_metric
 
-from pegasus import PegasusModel, train
+from pegasus import PegasusModel, train, test
 
 sys.path.insert(1, '../')
 import data_handler
 from data_handler import tokenization
 
-def compute_metrics(predicted, expected, metrics, tokenizer):
+# prints currently alive Tensors and Variables
+import gc
+def eval_storage():
+    for obj in gc.get_objects():
+        mem = 0
+        try:
+            if torch.is_tensor(obj) or (hasattr(obj, 'data') and torch.is_tensor(obj.data)):
+                if obj.is_cuda:
+                    mem += obj.element_size() * obj.nelement()
+                    #print(type(obj), obj.size())
+        except:
+            pass
+    print(mem)
+    print(torch.cuda.memory_summary())
+
+def decode_data(pred, exp, tokenizer):
+    
+    # Cast Tensors elements to Int
+    if torch.is_tensor(pred):
+        pred = pred.type(torch.IntTensor).cpu().data.numpy()
+    if torch.is_tensor(exp):
+        exp = exp.type(torch.IntTensor).cpu().data.numpy()
+    
+    # Decode predictions and labels
+    dec_pred = tokenizer.batch_decode(pred, skip_special_tokens=True, clean_up_tokenization_spaces=True)
+    dec_exp = tokenizer.batch_decode(exp, skip_special_tokens=True, clean_up_tokenization_spaces=True)
+    
+    return dec_pred, dec_exp
+
+def compute_metrics(predicted, expected, metrics):
     
     metric_results = {}
-    
-    if torch.is_tensor(predicted):
-        predicted = predicted.type(torch.IntTensor).cpu().data.numpy()
-        
-    if torch.is_tensor(expected):
-        expected = expected.type(torch.IntTensor).cpu().data.numpy()
         
     if "rouge" in metrics:
         metric = load_metric("rouge")
-        # TODO tokenize decoding in batch??
-        dec_pred = [ tokenizer.decode(s, skip_special_tokens=True, clean_up_tokenization_spaces=True) for s in predicted]
-        dec_exp = [ tokenizer.decode(s, skip_special_tokens=True, clean_up_tokenization_spaces=True) for s in expected]
-        metric_results['rouge'] = metric.compute(predictions = dec_pred, references = dec_exp)
+        res = metric.compute(predictions = predicted, references = expected) 
+        
+        metric_results['rouge'] = {}
+        for k,v in res.items():
+            metric_results['rouge'][k] = v.mid
         
     return metric_results
 
@@ -111,8 +135,12 @@ def trainable(config_dict):
     model.to(config_dict['device'])
     
     tokenizer = config_dict['tokenizer']
+    config_dict.pop('tokenizer')
     tokenized_tr = tokenize_df_gen(config_dict['train_data'], tokenizer, max_length=config_dict['max_length'])
     tokenized_val = tokenize_df_gen(config_dict['val_data'], tokenizer, max_length=config_dict['max_length'])
+    
+    config_dict.pop('train_data')
+    config_dict.pop('val_data')
     
     seq2seq_data_collator = DataCollatorForSeq2Seq(tokenizer, model=model, padding=True, max_length=config_dict['max_length'])
     
@@ -153,30 +181,45 @@ def trainable(config_dict):
     scheduler = get_linear_schedule_with_warmup(optimizer, 
                                         num_warmup_steps = config_dict['warmup_steps'],
                                         num_training_steps = total_steps)
-    
+    print("Evaluating reserved memory")
+    eval_storage()
+    #print(torch.cuda.memory_summary())
     train_res = train(model, config_dict['device'], train_loader, optimizer, config_dict['epochs'], None, scheduler, config_dict['max_length'], verbose=True)
+    print("Evaluating reserved memory")
+    eval_storage()
+    #print(torch.cuda.memory_summary())
+    #train_res = {k:v.type(torch.IntTensor).cpu().data.numpy() for k,v in train_res.items()}
+    #torch.cuda.empty_cache()
     
-    #TODO add metrics computation for training
+    # Evaluation of train predictions
     config_dict['train_metrics'] = [None] * len(train_res['predicted'])
     
     for i, elem in enumerate(train_res['predicted']):
-        config_dict['train_metrics'][i] = compute_metrics(elem, train_res['labels'][i], config_dict['metrics'], tokenizer)
+        dec_pred, dec_exp = decode_data(elem, train_res['labels'][i], tokenizer)
+        # Compute metrics
+        config_dict['train_metrics'][i] = compute_metrics(dec_pred, dec_exp, config_dict['metrics'])
         
-    #Save train results
-    config_dict['train'] = train_res
     
-    #TODO compute validation step with metrics
+    del(train_res)
+    torch.cuda.empty_cache()
+    
     val_loader = DataLoader(
         tokenized_val, # dataset di validazione
-        batch_size=len(tokenized_val), # dimensione del batch
+        #batch_size=len(tokenized_val), # dimensione del batch
+        batch_size=1,
         collate_fn=seq2seq_data_collator, # data collator
         shuffle=True,
         pin_memory=True
     )
     
-    config_dict.pop('train_data')
-    config_dict.pop('val_data')
-    config_dict.pop('tokenizer')
+    val_res = test(model, config_dict['device'], val_loader, max_length=config_dict['max_length'])
+    
+    for i, elem in enumerate(val_res['predicted']):
+        dec_pred, dec_exp = decode_data(elem, val_res['labels'][i], tokenizer)
+        # Compute metrics
+        config_dict['validation_metrics'][i] = compute_metrics(dec_pred, dec_exp, config_dict['metrics'])
+        
+    
     config_dict.pop('device')
     config_dict.pop('metrics')
     

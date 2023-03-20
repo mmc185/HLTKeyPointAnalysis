@@ -6,7 +6,7 @@ import ray
 from ray import air
 from ray.air import session
 
-from transformers import AutoTokenizer
+from transformers import AutoTokenizer, T5Tokenizer
 
 from task2_utils import grid_search
 
@@ -14,11 +14,11 @@ import sys
 sys.path.insert(1, '../')
 import data_handler
 
-ray.shutdown()
-ray.init(num_gpus=1) 
-
 os.environ["CUDA_VISIBLE_DEVICES"]="1"
 device = torch.device(0)
+
+ray.shutdown()
+ray.init(num_gpus=1) 
 
 df_train, df_val, _ = data_handler.load_full_dataset('../dataset/', get_train=True, get_dev=True, get_test=False)
 
@@ -26,11 +26,12 @@ df_train, df_val, _ = data_handler.load_full_dataset('../dataset/', get_train=Tr
 df_train = data_handler.concatenate_topics(df_train, input_col='argument', output_col='argument')
 df_val = data_handler.concatenate_topics(df_val, input_col='argument', output_col='argument')
 
-model_type = 'Robert-Spo'
+model_type = 'Robert-Espo'
 
-tokenizer = AutoTokenizer.from_pretrained('google/pegasus-xsum')
+#t5-small
+tokenizer = AutoTokenizer.from_pretrained("google/pegasus-xsum")
 
-max_length = 60
+max_length = 100
 
 params = {
     'tokenizer': tokenizer,
@@ -40,7 +41,7 @@ params = {
     'optimizer': 'adamW',
     'lr': 1e-3,
     'eps': 1e-8,
-    'epochs': 2,
+    'epochs': 1,
     'warmup_steps': 0,
     'weight_decay': 0,
     'momentum': 'null',
@@ -48,4 +49,4 @@ params = {
 }
 
 
-results = grid_search(df_train[:100], df_val[:100], model_type, params, ['rouge'], device)
+results = grid_search(df_train, df_val, model_type, params, ['rouge'], device)

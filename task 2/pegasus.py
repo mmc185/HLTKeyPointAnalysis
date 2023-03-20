@@ -12,8 +12,8 @@ class PegasusModel(nn.Module):
         super(PegasusModel, self).__init__()
         
         if model_type is None:
-            self.model = PegasusForConditionalGeneration.from_pretrained("google/pegasus-xsum",
-                                          num_labels = 2)
+            #"google/pegasus-xsum"
+            self.model = PegasusForConditionalGeneration.from_pretrained("google/pegasus-xsum", num_labels = 2)
         else:
             self.model = model_type
 
@@ -45,7 +45,7 @@ def train(model, device, train_loader, optimizer, epochs, loss_function, schedul
               'labels': torch.zeros([epochs,len(train_loader.dataset), max_length])
               }
     
-    results = {k:v.to(device) for k,v in results.items()}
+    #results = {k:v.to(device) for k,v in results.items()}
     
     for epoch in range(0, epochs):
         
@@ -54,7 +54,7 @@ def train(model, device, train_loader, optimizer, epochs, loss_function, schedul
               'labels': torch.zeros([len(train_loader.dataset), max_length])
         }
         
-        epoch_results = {k:v.to(device) for k,v in epoch_results.items()}
+        #epoch_results = {k:v.to(device) for k,v in epoch_results.items()}
         
         idx_start = 0
         idx_end = 0
@@ -76,7 +76,7 @@ def train(model, device, train_loader, optimizer, epochs, loss_function, schedul
 
             if loss_function is None:
                 loss = outs.loss
-            epoch_results['loss'][batch_idx] = loss
+            epoch_results['loss'][batch_idx] = loss.cpu()
             
             loss.backward()
                 
@@ -104,9 +104,9 @@ def train(model, device, train_loader, optimizer, epochs, loss_function, schedul
             gen_len = generated_summaries.shape[1]
             labels_len = labels.shape[1]
             
-            epoch_results['predicted'][idx_start:idx_end, :gen_len] = generated_summaries
+            epoch_results['predicted'][idx_start:idx_end, :gen_len] = generated_summaries.cpu()
             
-            epoch_results['labels'][idx_start:idx_end, :labels_len] = labels
+            epoch_results['labels'][idx_start:idx_end, :labels_len] = labels.cpu()
             
             if verbose:
                 if batch_idx % 10 == 0:
@@ -119,4 +119,33 @@ def train(model, device, train_loader, optimizer, epochs, loss_function, schedul
         results['predicted'][epoch] = epoch_results['predicted']        
         results['labels'][epoch] = epoch_results['labels']
                                  
+    return results
+
+def test(model, device, test_loader, max_length=100):
+    
+    model.eval()
+    
+    results = {
+            'predicted': torch.zeros([1, len(test_loader.dataset), max_length]),
+            'labels': torch.zeros([1, len(test_loader.dataset), max_length])
+          }
+    
+    results = {k:v.to(device) for k,v in results.items()}
+    
+    
+    with torch.no_grad():
+        for batch_idx, (encodings) in enumerate(test_loader):
+
+            # Extract arguments, key_points and labels all from the same batch
+            input_ids = encodings['input_ids'].to(device)
+            attention_mask = encodings['attention_mask'].to(device)
+            
+            labels = encodings['labels'].to(device)
+
+            outp = model.generate(input_args = input_ids, attention_masks = attention_mask)
+            print(labels.shape)
+            print(batch_idx)
+            results['labels'][batch_idx] = labels
+            results['predicted'][batch_idx] = outp
+            
     return results
