@@ -1,20 +1,17 @@
 import torch
 from torch import nn
-from transformers import BertModel, AutoModel
-from sentence_transformers import util
 from torch.optim.lr_scheduler import StepLR
-import numpy as np
-from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
-from siamese_network import SiameseNetwork, train, test
-import data_handler
-from challenge_metrics import load_kpm_data
-from transformers import BertModel, AdamW, get_linear_schedule_with_warmup
 from torch.utils.data import DataLoader
+from transformers import BertModel, AdamW, get_linear_schedule_with_warmup, AutoModel
+from sentence_transformers import util
+from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
+from challenge_metrics import load_kpm_data, get_predictions, evaluate_predictions
+from siamese_network import SiameseNetwork, train, test
 import matplotlib.pyplot as plt
+import numpy as np
 import pandas as pd
 from tqdm import tqdm
 import itertools as it
-from challenge_metrics import get_predictions, evaluate_predictions
 from os import path
 import gc
 
@@ -23,6 +20,9 @@ from ray import air
 from ray import tune
 from ray.air import session
 
+import sys
+sys.path.insert(1, "../")
+import data_handler
 
 def compute_metrics(predicted, expected, metrics):
     
@@ -90,8 +90,8 @@ def grid_search(train_data, val_data, model_type, params, metrics, device):
     #train_arg_df, train_kp_df, train_labels_df = load_kpm_data("dataset/", subset="train")
     #val_arg_df, val_kp_df, val_labels_df = load_kpm_data("dataset/", subset="dev")
     
-    params['train_kpm_data'] = load_kpm_data("dataset/", subset="train")
-    params['val_kpm_data'] = load_kpm_data("dataset/", subset="dev")
+    params['train_kpm_data'] = load_kpm_data("../dataset/", subset="train")
+    params['val_kpm_data'] = load_kpm_data("../dataset/", subset="dev")
     
     params['device'] = device
     
@@ -191,5 +191,5 @@ def trainable(config_dict):
     
     df=pd.DataFrame(config_dict)
 
-    df.to_csv('../../../HLTKeyPointAnalysis/task1_grid_results_with_ray.csv', mode='a', sep='#', index=False, header=False if path.exists("../../../HLTKeyPointAnalysis/task1_grid_results_with_ray.csv") else True)
+    df.to_csv('../../../HLTKeyPointAnalysis/kp_match/results/task1_grid_results_with_ray.csv', mode='a', sep='#', index=False, header=False if path.exists("../../../HLTKeyPointAnalysis/kp_match/results/task1_grid_results_with_ray.csv") else True)
     

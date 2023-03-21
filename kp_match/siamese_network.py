@@ -1,12 +1,12 @@
 import torch
 from torch import nn
+from torch.optim.lr_scheduler import StepLR
 from transformers import BertModel, AutoModel
 from sentence_transformers import util
-from torch.optim.lr_scheduler import StepLR
 import numpy as np
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
-from challenge_metrics import get_predictions, evaluate_predictions
 from sklearn.preprocessing import MinMaxScaler
+from challenge_metrics import get_predictions, evaluate_predictions
 
 class SiameseNetwork(nn.Module):
     """
@@ -24,19 +24,6 @@ class SiameseNetwork(nn.Module):
             self.model = model_type
 
         self.output_fun = torch.nn.CosineSimilarity()
-        
-        # add linear layers to compare
-        '''self.fc = nn.Sequential(
-             nn.Linear(self.model.fc.in_features * 2, 256),
-             nn.ReLU(inplace=True),
-             nn.Linear(256, 1),
-        )
-
-        self.sigmoid = nn.Sigmoid()'''
-
-        # initialize the weights
-        #self.resnet.apply(self.init_weights)
-        # self.fc.apply(self.init_weights)
         
     def init_weights(self, m):
         if isinstance(m, nn.Linear):
