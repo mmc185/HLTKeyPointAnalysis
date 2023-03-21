@@ -14,7 +14,7 @@ import sys
 sys.path.insert(1, '../')
 import data_handler
 
-os.environ["CUDA_VISIBLE_DEVICES"]="1"
+os.environ["CUDA_VISIBLE_DEVICES"]="3"
 device = torch.device(0)
 
 ray.shutdown()

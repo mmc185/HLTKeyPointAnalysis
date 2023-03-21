@@ -5,8 +5,6 @@ import numpy as np
 import os
 import json
 
-
-
 def get_ap(df, label_column, top_percentile=0.5):
     top = int(len(df)*top_percentile)
     df = df.sort_values('score', ascending=False).head(top)

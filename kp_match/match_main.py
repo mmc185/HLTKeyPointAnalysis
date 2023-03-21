@@ -1,12 +1,10 @@
 import torch
 from pytorch_metric_learning import losses
-import data_handler
 from challenge_metrics import load_kpm_data
 from siamese_network import SiameseNetwork, train, test
-from task1_utils import grid_search
+from matching_utils import grid_search
 from transformers import BertModel, BertTokenizer, AutoTokenizer, AdamW, get_linear_schedule_with_warmup
 from torch.utils.data import DataLoader
-from custom_losses import ContrastiveLoss
 import matplotlib.pyplot as plt
 import pandas as pd
 import numpy as np
@@ -20,13 +18,17 @@ import ray
 from ray import air
 from ray.air import session
 
-os.environ["CUDA_VISIBLE_DEVICES"]="1"
+import sys
+sys.path.insert(1, "../")
+import data_handler
+
+os.environ["CUDA_VISIBLE_DEVICES"]="3"
 device = torch.device(0)
 
 ray.shutdown()
 ray.init(num_gpus=1) 
 
-df_train, df_val, _ = data_handler.load(path="dataset/", filename_train="train.csv", filename_dev="dev.csv", sep_char='#')
+df_train, df_val, _ = data_handler.load(path="../dataset/", filename_train="train.csv", filename_dev="dev.csv", sep_char='#')
 
 # Concatenate topics and keypoints, as stated in the paper
 df_train = data_handler.concatenate_topics(df_train)
@@ -38,10 +40,6 @@ model_type = 'bert-base-uncased'
 tokenizer = AutoTokenizer.from_pretrained(model_type, do_lower_case=True)
 
 max_length = 60
-# Tokenize data
-#columns_list = ['argument', 'key_points', 'label']
-#tokenized_tr = data_handler.tokenize_df(df_train[columns_list], tokenizer, max_length=max_length)
-#tokenized_val = data_handler.tokenize_df(df_val[columns_list], tokenizer, max_length=max_length)
 
 params = {
     'tokenizer': tokenizer,
@@ -52,13 +50,13 @@ params = {
     'lr': 1e-3,
     'eps': 'null',
     'epochs': 2,
-    'warmup_steps': tune.grid_search([0, 1e1, 1e2]),
-    'weight_decay': tune.grid_search([0, 1e-1, 1e-5]),
-    'momentum': tune.grid_search([0, 2e-1, 6e-1]),
+    'warmup_steps': tune.grid_search([0]),
+    'weight_decay': tune.grid_search([0]),
+    'momentum': tune.grid_search([0]),
     'nesterov': False
 }
 
 
-results = grid_search(df_train, df_val, model_type, params, ['accuracy', 'precision', 'recall', 'f1'], device)
+results = grid_search(df_train[:8], df_val[:8], model_type, params, ['accuracy', 'precision', 'recall', 'f1'], device)
 
 
