@@ -33,20 +33,20 @@ tokenizer = AutoTokenizer.from_pretrained(model_type)
 
 max_length = 100
 
+
 params = {
     'tokenizer': tokenizer,
     'max_length': max_length,
-    'batch_size': 8,
     'loss': 'null',
+    'batch_size': 8,
     'optimizer': 'adamW',
-    'lr': 1e-3,
-    'eps': 1e-8,
+    'lr': tune.grid_search([1e-5, 1e-7]),
+    'eps': tune.grid_search([1e-8, 1e-3]),
     'epochs': 1,
-    'warmup_steps': 0,
-    'weight_decay': 0,
-    'momentum': 'null',
-    'nesterov': False
+    'warmup_steps': tune.grid_search([0, 1e2]),
+    'weight_decay': 1e-8
 }
 
+# lr: 1e-3 con 1e-3 tutti e 1e-8 con 1e2 warmup
 
-results = grid_search(df_train[:5], df_val[:5], model_type, params, ['rouge'], device)
+results = grid_search(df_train, df_val, model_type, params, ['rouge'], device)
