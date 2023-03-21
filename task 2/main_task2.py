@@ -26,10 +26,10 @@ df_train, df_val, _ = data_handler.load_full_dataset('../dataset/', get_train=Tr
 df_train = data_handler.concatenate_topics(df_train, input_col='argument', output_col='argument')
 df_val = data_handler.concatenate_topics(df_val, input_col='argument', output_col='argument')
 
-model_type = 'Robert-Espo'
+model_type = 'google/pegasus-xsum'
 
 #t5-small
-tokenizer = AutoTokenizer.from_pretrained("google/pegasus-xsum")
+tokenizer = AutoTokenizer.from_pretrained(model_type)
 
 max_length = 100
 
@@ -49,4 +49,4 @@ params = {
 }
 
 
-results = grid_search(df_train, df_val, model_type, params, ['rouge'], device)
+results = grid_search(df_train[:5], df_val[:5], model_type, params, ['rouge'], device)

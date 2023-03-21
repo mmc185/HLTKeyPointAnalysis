@@ -7,30 +7,16 @@ from torch.utils.data import DataLoader
 import pandas as pd
 import torch
 import sys
+from os import path
 
 from transformers import AutoTokenizer, DataCollatorForSeq2Seq, get_linear_schedule_with_warmup
 from datasets import load_metric
 
-from pegasus import PegasusModel, train, test
+from generative_model import GenerativeModel, train, test
 
 sys.path.insert(1, '../')
 import data_handler
 from data_handler import tokenization
-
-# prints currently alive Tensors and Variables
-import gc
-def eval_storage():
-    for obj in gc.get_objects():
-        mem = 0
-        try:
-            if torch.is_tensor(obj) or (hasattr(obj, 'data') and torch.is_tensor(obj.data)):
-                if obj.is_cuda:
-                    mem += obj.element_size() * obj.nelement()
-                    #print(type(obj), obj.size())
-        except:
-            pass
-    print(mem)
-    print(torch.cuda.memory_summary())
 
 def decode_data(pred, exp, tokenizer):
     
@@ -54,9 +40,12 @@ def compute_metrics(predicted, expected, metrics):
         metric = load_metric("rouge")
         res = metric.compute(predictions = predicted, references = expected) 
         
+        keys_vec = ['precision', 'recall', 'fmeasure']
         metric_results['rouge'] = {}
         for k,v in res.items():
-            metric_results['rouge'][k] = v.mid
+            metric_results['rouge'][k] = {}
+            for metric in keys_vec:
+                metric_results['rouge'][k][metric] = getattr(v.mid, metric)
         
     return metric_results
 
@@ -131,7 +120,7 @@ def trainable(config_dict):
     
     torch.cuda.empty_cache()
     
-    model = PegasusModel()
+    model = GenerativeModel(config_dict['model_type'])
     model.to(config_dict['device'])
     
     tokenizer = config_dict['tokenizer']
@@ -181,15 +170,7 @@ def trainable(config_dict):
     scheduler = get_linear_schedule_with_warmup(optimizer, 
                                         num_warmup_steps = config_dict['warmup_steps'],
                                         num_training_steps = total_steps)
-    print("Evaluating reserved memory")
-    eval_storage()
-    #print(torch.cuda.memory_summary())
     train_res = train(model, config_dict['device'], train_loader, optimizer, config_dict['epochs'], None, scheduler, config_dict['max_length'], verbose=True)
-    print("Evaluating reserved memory")
-    eval_storage()
-    #print(torch.cuda.memory_summary())
-    #train_res = {k:v.type(torch.IntTensor).cpu().data.numpy() for k,v in train_res.items()}
-    #torch.cuda.empty_cache()
     
     # Evaluation of train predictions
     config_dict['train_metrics'] = [None] * len(train_res['predicted'])
@@ -205,7 +186,6 @@ def trainable(config_dict):
     
     val_loader = DataLoader(
         tokenized_val, # dataset di validazione
-        #batch_size=len(tokenized_val), # dimensione del batch
         batch_size=1,
         collate_fn=seq2seq_data_collator, # data collator
         shuffle=True,
@@ -214,6 +194,7 @@ def trainable(config_dict):
     
     val_res = test(model, config_dict['device'], val_loader, max_length=config_dict['max_length'])
     
+    config_dict['validation_metrics'] = [None] * len(val_res['predicted'])
     for i, elem in enumerate(val_res['predicted']):
         dec_pred, dec_exp = decode_data(elem, val_res['labels'][i], tokenizer)
         # Compute metrics
@@ -223,4 +204,9 @@ def trainable(config_dict):
     config_dict.pop('device')
     config_dict.pop('metrics')
     
-    print(config_dict)
+    for key, value in config_dict.items():
+        config_dict[key] = [config_dict[key]]
+    
+    df=pd.DataFrame(config_dict)
+
+    df.to_csv('../../../HLTKeyPointAnalysis/task 2/task2_grid_results.csv', mode='a', sep='#', index=False, header=False if path.exists("../../../HLTKeyPointAnalysis/task 2/task2_grid_results.csv") else True)
