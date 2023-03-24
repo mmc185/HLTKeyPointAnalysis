@@ -205,12 +205,10 @@ def trainable(config_dict):
     val_res = test(model, config_dict['device'], val_loader, max_length=config_dict['max_length'])
     
     config_dict['validation_metrics'] = [None] * len(val_res['predicted'])
-    for i, elem in enumerate(val_res['predicted']):
-        dec_pred, dec_exp = decode_data(elem, val_res['labels'][i], tokenizer)
-        # Compute metrics
-        config_dict['validation_metrics'][i] = compute_metrics(dec_pred, dec_exp, config_dict['metrics'])
+    dec_pred, dec_exp = decode_data(val_res['predicted'], val_res['labels'], tokenizer)
+    # Compute metrics
+    config_dict['validation_metrics'] = compute_metrics(dec_pred, dec_exp, config_dict['metrics'])
         
-    
     config_dict.pop('device')
     config_dict.pop('metrics')
     
