@@ -29,7 +29,7 @@ class GenerativeModel(nn.Module):
         
 
         
-def train(model, device, train_loader, optimizer, epochs, loss_function, scheduler, max_length, verbose=False):
+def train(model, device, train_loader, optimizer, epochs, loss_dict, scheduler, max_length, verbose=False):
     model.train()
     
     
@@ -59,12 +59,19 @@ def train(model, device, train_loader, optimizer, epochs, loss_function, schedul
             
             labels = encodings['labels'].to(device)
             optimizer.zero_grad()
-            outs = model(input_ids, attention_mask, 
+            
+            if loss_dict is None:
+                outs = model(input_ids, attention_mask, 
                          decoder_input_ids, decoder_attention_mask, 
                          labels)
 
-            if loss_function is None:
                 loss = outs.loss
+            else:
+                loss_function = loss_dict['loss_function']
+                generated_summaries = model.generate(input_args=input_ids, attention_masks=attention_mask)
+                
+                loss = loss_function({'input_ids':input_ids, 'attention_masks':attention_mask}, generated_summaries, loss_dict['gen_tokenizer'], loss_dict['match_model'], loss_dict['match_tokenizer'], loss_dict['mode'], max_length)
+            
             epoch_results['loss'][batch_idx] = loss.cpu()
             
             loss.backward()
@@ -118,9 +125,6 @@ def test(model, device, test_loader, max_length=100):
             'predicted': torch.zeros([len(test_loader.dataset), max_length]),
             'labels': torch.zeros([(len(test_loader.dataset)),max_length])
           }
-    
-    #results = {k:v.to(device) for k,v in results.items()}
-    
     
     with torch.no_grad():
 

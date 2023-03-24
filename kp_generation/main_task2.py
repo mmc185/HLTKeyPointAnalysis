@@ -14,7 +14,7 @@ import sys
 sys.path.insert(1, '../')
 import data_handler
 
-os.environ["CUDA_VISIBLE_DEVICES"]="3"
+os.environ["CUDA_VISIBLE_DEVICES"]="1"
 device = torch.device(0)
 
 ray.shutdown()
@@ -45,7 +45,9 @@ params = {
     'warmup_steps': 0,
     'weight_decay': 0,
     'momentum': 'null',
-    'nesterov': False
+    'nesterov': False,
+    'mode': 'cosine',
+    'match_model_type': 'roberta-large'
 }
 
 

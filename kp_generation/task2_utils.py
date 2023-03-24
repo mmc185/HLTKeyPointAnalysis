@@ -9,14 +9,19 @@ import torch
 import sys
 from os import path
 
-from transformers import AutoTokenizer, DataCollatorForSeq2Seq, get_linear_schedule_with_warmup
+from transformers import AutoTokenizer, AutoModel, DataCollatorForSeq2Seq, get_linear_schedule_with_warmup
 from datasets import load_metric
 
 from generative_model import GenerativeModel, train, test
 
+from custom_loss import compute_match_score
+
 sys.path.insert(1, '../')
 import data_handler
 from data_handler import tokenization
+
+sys.path.insert(1, '../kp_match')
+from siamese_network import SiameseNetwork
 
 def decode_data(pred, exp, tokenizer):
     
@@ -170,7 +175,16 @@ def trainable(config_dict):
     scheduler = get_linear_schedule_with_warmup(optimizer, 
                                         num_warmup_steps = config_dict['warmup_steps'],
                                         num_training_steps = total_steps)
-    train_res = train(model, config_dict['device'], train_loader, optimizer, config_dict['epochs'], None, scheduler, config_dict['max_length'], verbose=True)
+    
+    loss_dict = None
+    if config_dict['match_model_type'] != 'null':
+        #TODO add to(device)????
+        match_model = SiameseNetwork(model_type=AutoModel.from_pretrained(config_dict['match_model_type']))
+        match_model.load_state_dict(torch.load("../../../HLTKeyPointAnalysis/kp_match/models/model_82"))
+        match_tokenizer = AutoTokenizer.from_pretrained(config_dict['match_model_type'])
+        loss_dict = {'gen_tokenizer': tokenizer, 'match_tokenizer': match_tokenizer, 'match_model': match_model, 'mode': config_dict['mode'], 'loss_function': compute_match_score}
+    
+    train_res = train(model, config_dict['device'], train_loader, optimizer, config_dict['epochs'], loss_dict, scheduler, config_dict['max_length'], verbose=True)
     
     # Evaluation of train predictions
     config_dict['train_metrics'] = [None] * len(train_res['predicted'])
@@ -179,10 +193,6 @@ def trainable(config_dict):
         dec_pred, dec_exp = decode_data(elem, train_res['labels'][i], tokenizer)
         # Compute metrics
         config_dict['train_metrics'][i] = compute_metrics(dec_pred, dec_exp, config_dict['metrics'])
-        
-    
-    del(train_res)
-    torch.cuda.empty_cache()
     
     val_loader = DataLoader(
         tokenized_val, # dataset di validazione
@@ -209,4 +219,4 @@ def trainable(config_dict):
     
     df=pd.DataFrame(config_dict)
 
-    df.to_csv('../../../HLTKeyPointAnalysis/task 2/task2_grid_results.csv', mode='a', sep='#', index=False, header=False if path.exists("../../../HLTKeyPointAnalysis/task 2/task2_grid_results.csv") else True)
+    df.to_csv('../../../HLTKeyPointAnalysis/kp_generation/task2_grid_results.csv', mode='a', sep='#', index=False, header=False if path.exists("../../../HLTKeyPointAnalysis/kp_generation/task2_grid_results.csv") else True)
