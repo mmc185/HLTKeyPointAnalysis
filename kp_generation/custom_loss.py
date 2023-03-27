@@ -8,7 +8,7 @@ sys.path.insert(1, '../')
 import data_handler
 
 
-def compute_match_score(arguments, summaries, gen_tokenizer, match_model, match_tokenizer, mode = "null", max_length=512):
+def compute_match_score(arguments, summaries, gen_tokenizer, match_model, match_tokenizer, device, mode = "null", max_length=512):
     
     dec_args = gen_tokenizer.batch_decode(arguments['input_ids'], skip_special_tokens=True, clean_up_tokenization_spaces=True)
     dec_sums = gen_tokenizer.batch_decode(summaries, skip_special_tokens=True, clean_up_tokenization_spaces=True)
@@ -25,10 +25,13 @@ def compute_match_score(arguments, summaries, gen_tokenizer, match_model, match_
         "attention_masks" : enc_sums[1]
     }
     
+    args = {k:v.to(device) for k,v in args.items()}
+    sums = {k:v.to(device) for k,v in sums.items()}
+    
     score = match_model(args, sums)
     
     if mode == "scaled":
-        score = score.data.numpy()
+        score = score.cpu().data.numpy()
         score = (score - np.min(score)) / (np.max(score) - np.min(score))
         score = 1 - score
     

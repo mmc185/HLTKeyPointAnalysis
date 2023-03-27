@@ -70,7 +70,7 @@ def train(model, device, train_loader, optimizer, epochs, loss_dict, scheduler, 
                 loss_function = loss_dict['loss_function']
                 generated_summaries = model.generate(input_args=input_ids, attention_masks=attention_mask)
                 
-                loss = loss_function({'input_ids':input_ids, 'attention_masks':attention_mask}, generated_summaries, loss_dict['gen_tokenizer'], loss_dict['match_model'], loss_dict['match_tokenizer'], loss_dict['mode'], max_length)
+                loss = loss_function({'input_ids':input_ids, 'attention_masks':attention_mask}, generated_summaries, loss_dict['gen_tokenizer'], loss_dict['match_model'], loss_dict['match_tokenizer'], device, loss_dict['mode'], max_length)
             
             epoch_results['loss'][batch_idx] = loss.cpu()
             

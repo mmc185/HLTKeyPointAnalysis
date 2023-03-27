@@ -181,6 +181,7 @@ def trainable(config_dict):
         #TODO add to(device)????
         match_model = SiameseNetwork(model_type=AutoModel.from_pretrained(config_dict['match_model_type']))
         match_model.load_state_dict(torch.load("../../../HLTKeyPointAnalysis/kp_match/models/model_82"))
+        match_model.to(config_dict['device'])
         match_tokenizer = AutoTokenizer.from_pretrained(config_dict['match_model_type'])
         loss_dict = {'gen_tokenizer': tokenizer, 'match_tokenizer': match_tokenizer, 'match_model': match_model, 'mode': config_dict['mode'], 'loss_function': compute_match_score}
     

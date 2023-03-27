@@ -40,14 +40,14 @@ params = {
     'loss': 'null',
     'batch_size': 8,
     'optimizer': 'adamW',
-    'lr': tune.grid_search([1e-5, 1e-7]),
-    'eps': tune.grid_search([1e-8, 1e-3]),
+    'lr': tune.grid_search([1e-3, 1e-2]),
+    'eps': tune.grid_search([1e-8]),
     'epochs': 1,
-    'warmup_steps': 0,
-    'weight_decay': 0,
+    'warmup_steps': tune.grid_search([0, 1e2]),
+    'weight_decay': 1e-8,
     'momentum': 'null',
     'nesterov': False,
-    'mode': 'cosine',
+    'mode': 'scaled',
     'match_model_type': 'roberta-large'
 }
 
