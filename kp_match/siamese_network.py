@@ -45,8 +45,8 @@ class SiameseNetwork(nn.Module):
         output2 = self.forward_once(input2['input_ids'], input2['attention_masks'])
         
         # AVG of every token
-        output1 = torch.mean(output1[:, 1:, :], 1)
-        output2 = torch.mean(output2[:, 1:, :], 1)
+        output1 = torch.mean(output1, 1)
+        output2 = torch.mean(output2, 1)
 
         out = self.output_fun(output1, output2)
 
