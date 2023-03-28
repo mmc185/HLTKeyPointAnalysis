@@ -84,17 +84,23 @@ def tokenization_target(sentences, tokenizer, max_length=512):
         return input_ids, attention_masks, labels
     
     
-def tokenize_df_gen(df, tokenizer, max_length=512):
+def tokenize_df_gen(df, tokenizer, max_length=512, key_points_on=True):
     input_id_args, attention_masks_args = tokenization(df['argument'], tokenizer, max_length=max_length)
-    input_id_kps, attention_masks_kps, labels = tokenization_target(df['key_point'], tokenizer, max_length=max_length)
-    
-    tokenized = [ { #'id': i,
-        'input_ids': input_id_args[i],
-        'attention_mask' : attention_masks_args[i], 
-        'decoder_input_ids': input_id_kps[i],
-         'decoder_attention_mask' : attention_masks_kps[i],
-        'labels': labels[i]
-        } for i in range(len(input_id_args)) ]
+    if key_points_on:
+        input_id_kps, attention_masks_kps, labels = tokenization_target(df['key_point'], tokenizer, max_length=max_length)
+
+        tokenized = [ { #'id': i,
+            'input_ids': input_id_args[i],
+            'attention_mask' : attention_masks_args[i], 
+            'decoder_input_ids': input_id_kps[i],
+             'decoder_attention_mask' : attention_masks_kps[i],
+            'labels': labels[i]
+            } for i in range(len(input_id_args)) ]
+    else:
+        tokenized = [ { #'id': i,
+            'input_ids': input_id_args[i],
+            'attention_mask' : attention_masks_args[i]
+            } for i in range(len(input_id_args)) ]
 
     return tokenized
 
@@ -218,4 +224,4 @@ def trainable(config_dict):
     
     df=pd.DataFrame(config_dict)
 
-    df.to_csv('../../../HLTKeyPointAnalysis/kp_generation/task2_grid_results.csv', mode='a', sep='#', index=False, header=False if path.exists("../../../HLTKeyPointAnalysis/kp_generation/task2_grid_results.csv") else True)
+    df.to_csv('../../../HLTKeyPointAnalysis/task 2/task2_grid_results.csv', mode='a', sep='#', index=False, header=False if path.exists("../../../HLTKeyPointAnalysis/task 2/task2_grid_results.csv") else True)
