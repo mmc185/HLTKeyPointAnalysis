@@ -11,10 +11,12 @@ def load_full_dataset(path, get_train=False, get_dev=False, get_test=False, sep_
         train1 = pd.read_csv(path+'train.csv', sep=sep_char)
         train2 = pd.read_csv(path+'dev.csv', sep=sep_char)
         train = pd.concat([train1, train2])
-        train.drop(columns=['arg_id', 'key_point_id', 'label'], inplace=True)
+        train = train[train['label'] == 1.0]
+        train.drop(columns=['arg_id', 'key_point_id'], inplace=True)
     if get_dev:
         dev = pd.read_csv(path+'test.csv', sep=sep_char)
-        dev.drop(columns=['arg_id', 'key_point_id', 'label'], inplace=True)
+        dev = dev[dev['label'] == 1.0]
+        dev.drop(columns=['arg_id', 'key_point_id'], inplace=True)
     if get_test:
         test = pd.read_csv(path+'test_IBM.csv', sep=sep_char)
     
