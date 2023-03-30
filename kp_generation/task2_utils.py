@@ -209,7 +209,7 @@ def trainable(config_dict):
         pin_memory=True
     )
     
-    val_res = test(model, config_dict['device'], val_loader, max_length=config_dict['max_length'])
+    val_res = validate(model, config_dict['device'], val_loader, max_length=config_dict['max_length'])
     
     config_dict['validation_metrics'] = [None] * len(val_res['predicted'])
     dec_pred, dec_exp = decode_data(val_res['predicted'], val_res['labels'], tokenizer)
