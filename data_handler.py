@@ -1,16 +1,49 @@
 import pandas as pd
 import torch
 
-def load_full_dataset(path, get_train=False, get_dev=False, get_test=False, sep_char='#', shuffle=False):
+def load_full_dataset(path, get_train=False, get_dev=False, get_test=False, sep_char='#'):
+    """ Load dataset for generation task
+    Parameters
+    ----------
+    path: string
+        Path in which to find the files
+    get_train: bool, default=False
+        Return training data
+    get_dev: bool, default=False
+        Return validation data
+    get_test: bool, default=False
+        Return test data
+    sep_char: char, default='#'
+        Separator for .csv files
+    Returns
+    -------
+    train: pd.DataFrame
+        Training data
+    dev: pd.DataFrame
+        Validation data
+    test: pd.DataFrame
+        Test data
+    """
     
     train = None
     dev = None
     test = None
 
+    """
+    For the generation task, the training set is composed of
+    the original training + validation sets,
+    the validation set is composed of the original test set
+    and the test set has the IBM test phrases.
+    """
     if get_train:
         train1 = pd.read_csv(path+'train.csv', sep=sep_char)
         train2 = pd.read_csv(path+'dev.csv', sep=sep_char)
         train = pd.concat([train1, train2])
+        """
+        Only select matching pairs of key-points and arguments,
+        otherwise the model would be trained to generate 
+        key-points which don't match the semantics of the argument
+        """
         train = train[train['label'] == 1.0]
         train.drop(columns=['arg_id', 'key_point_id'], inplace=True)
     if get_dev:
@@ -22,25 +55,38 @@ def load_full_dataset(path, get_train=False, get_dev=False, get_test=False, sep_
     
     return train, dev, test
 
-'''
-Load data from a csv file
-Params:
-    path: foder path where the file is saved
-    filename_train: filename to the training set (could be empty)
-    filename_dev: filename to the development set (could be empty)
-    filename_test: filename to the test set (could be empty)
-    sep_char: separator char in the indicated csv
-Returns:
-    train: training dataframe
-    dev: development dataframe
-    test: test dataframe
-'''
-def load(path = "", filename_train = "", filename_dev = "", filename_test = "", sep_char=';', shuffle = False):
 
+def load(path = "", filename_train = "", filename_dev = "", filename_test = "", sep_char=';', shuffle = False):
+    """
+    Load dataset for the matching task
+    Parameters
+    ----------
+        path: string
+            Path in which to find the files
+        filename_train: string, default=""
+            Filename of the training set
+        filename_dev: string, default=""
+            Filename of the validation set
+        filename_test: string, default=""
+            Filename of the test set
+        sep_char: char, default=';'
+            Separator for .csv files
+        shuffle: bool, default=False
+            If true, data is shuffled
+    Returns
+    -------
+    train: pd.DataFrame
+        Training data
+    dev: pd.DataFrame
+        Validation data
+    test: pd.DataFrame
+        Test data
+    """
     train = None
     dev = None
     test = None
 
+    # If string is not empty we want to return that specific set of data
     if filename_train != "":
         train = pd.read_csv(path+filename_train, sep=sep_char)
         train = __get_dataset(train, shuffle)
@@ -53,14 +99,20 @@ def load(path = "", filename_train = "", filename_dev = "", filename_test = "", 
 
     return train, dev, test
 
-'''
-Private method used to clear the dataset from all the useless columns
-Params:
-    df: dataframe to edit
-Returns:
-    df: edited dataframe
-'''
+
 def __get_dataset(df, shuffle=False):
+    """ Edits data to make it compatible for training
+    Parameters
+    ----------
+    df: pd.Dataframe
+        Data to edit
+    shuffle: bool, default=False
+            If true, data is shuffled
+    Returns
+    -------
+    df: pd.DataFrame
+        Edited data
+    """
 
     # Cast labels in float type
     df['label'] = df['label'].astype('float')
@@ -71,24 +123,37 @@ def __get_dataset(df, shuffle=False):
         
     return df
 
-'''
-Add topic before keypoint
-Params:
-    df: dataframe to edit
-Returns:
-    df: edited dataframe
-'''
-def concatenate_topics(df, input_col='key_point', output_col='key_points'):
 
-    # creating a list of keypoints for each topic
+def concatenate_topics(df, input_col='key_point', output_col='key_points'):
+    """ Concatenates each topic to the corresponding value in the 
+    "input_col" column
+    Parameters
+    ----------
+    df: pd.Dataframe
+        Data containing the columns to concatenate
+    input_col: string, default='key_point'
+        Name of column of data that is going to be concatenated
+        with the topics
+    output_col: string, default='key_points'
+        Name of new column in which 
+        the concatenation is going to be stored
+    Returns
+    -------
+    df: pd.DataFrame
+        Edited data
+    """
+
+    # Transform data into lists
     input_data = df[input_col].tolist()
     topics = df['topic'].tolist()
 
-    # appending topic to each vector
+    # Appending topic to each corresponding element
     for i, _ in enumerate(input_data):
         input_data[i] = topics[i] + " " + input_data[i]
     
+    # Drops columns used to concatenate
     df.drop(columns=[input_col, 'topic'], inplace=True)
+    # Stores concatenation in a new column
     df[output_col] = input_data
     
     df.reset_index(inplace=True)
@@ -96,100 +161,86 @@ def concatenate_topics(df, input_col='key_point', output_col='key_points'):
     
     return df
 
-'''
-Split the training data in train and validation set following the given percentage of split
-Params:
-    df: dataframe to edit
-    perc_split: percentage of data that will be moved to the validation set
-Returns:
-    train: training set dataframe
-    test: test set dataframe
-'''
-def split_train_data(df, perc_split=0.8):
-    counts = df.label.value_counts()
 
-    zero_train = round((counts[0] * perc_split))
-    print(f"zero_train: ", zero_train)
-    one_train = round((counts[1] * perc_split))
-    print(f"one_train: ", one_train)
-    zero_val = counts[0] - zero_train
-    print(f"zero_val: ", zero_val)
-    one_val = counts[1] - one_train
-    print(f"one_val: ", one_val)
-
-    train = df[df['label'] == 0][:zero_train]
-
-    train = pd.concat([train, df[df['label'] == 1][:one_train]])
-    val = df[df['label'] == 0][zero_train:zero_train + zero_val]
-    val = pd.concat([val, df[df['label'] == 1][one_train : one_train+one_val]])
-
-    #train = train[['argument', 'key_point', 'topic', 'label']]
-    #val = val[['argument', 'key_point', 'topic', 'label']]
-
-    return train, val
-
-'''
-Given a set of sentences and labels, it makes a tokenization element-wise.
-Params:
-    sentences: sentences to be tokenized
-    tokenizer: type of tokenizer to use
-    labels: labels to be tokenized
-Returns:
-    input_ids: input_ids of the tokenized sentences
-    attention_masks: attention masks of the tokenized sentences
-'''
 def tokenization(sentences, tokenizer, max_length=512, labels=None):
-     # Tokenize all of the sentences and map the tokens to thier word IDs.
-        input_ids = []
-        attention_masks = []
+    """ Tokenize sentences
+    Parameters
+    ----------
+    sentences: array of strings
+        Sentences to be tokenized
+    tokenizer: Tokenizer object
+        Tokenizer to perform tokenization
+    max_length: int, default='512'
+        Maximum length of tokenization
+    labels: array-like, default=None
+        Target labels of data
+    Returns
+    -------
+    input_ids: array-like
+        Input IDs of tokenized sentences
+    attention_masks: array-like
+        Attention masks of tokenized sentences
+    labels: array-like
+        Target labels of data
+    """
+    input_ids = []
+    attention_masks = []
 
-      # For every sentence...
-        for sent in sentences:
-          # `encode_plus` will:
-          #   (1) Tokenize the sentence.
-          #   (2) Prepend the `[CLS]` token to the start.
-          #   (3) Append the `[SEP]` token to the end.
-          #   (4) Map tokens to their IDs.
-          #   (5) Pad or truncate the sentence to `max_length`
-          #   (6) Create attention masks for [PAD] tokens.
-            encoding = tokenizer.encode_plus(
-                              sent,                      # Sentence to encode.
-                              add_special_tokens = True, # Add '[CLS]' and '[SEP]'
-                              max_length = max_length,   # Pad & truncate all sentences.
-                              pad_to_max_length = True,
-                              return_attention_mask = True,   # Construct attn. masks.
-                              return_tensors = 'pt',     # Return pytorch tensors.
-                              truncation=True
-                        )
-          
-          # Add the encoded sentence to the list.    
-            input_ids.append(encoding['input_ids'])
-          
-          # And its attention mask (simply differentiates padding from non-padding).
-            attention_masks.append(encoding['attention_mask'])
+    for sent in sentences:
+        """
+        Tokenize sentence adding special tokens, truncating sentences to
+        max_length and adding eventual padding
+        """
+        encoding = tokenizer.encode_plus(
+                          sent,                      
+                          add_special_tokens = True, 
+                          max_length = max_length,   
+                          pad_to_max_length = True,
+                          return_attention_mask = True,   
+                          return_tensors = 'pt',   
+                          truncation=True
+                    )
 
-      # Convert the lists into tensors.
-        input_ids = torch.cat(input_ids, dim=0)
-        attention_masks = torch.cat(attention_masks, dim=0)
 
-        if labels is not None:
-            labels = torch.tensor(labels)
-            return input_ids, attention_masks, labels
-        else:
-            return input_ids, attention_masks
+        # Store encoding input ID and attention mask
+        input_ids.append(encoding['input_ids'])
 
-'''
-Tokenize a dataframe of sentences with labels
-Param:
-    df: dataframe to tokenize
-    tokenizer: type of tokenizer to use
-Returns:
-    tokenized: a list composed by tokenized arguments (dict), tokenized key points (dict) and tokenized labels (list)
-'''
+        attention_masks.append(encoding['attention_mask'])
+
+    # Convert the lists into tensors.
+    input_ids = torch.cat(input_ids, dim=0)
+    attention_masks = torch.cat(attention_masks, dim=0)
+
+    if labels is not None:
+        # Convert labels to tensors
+        labels = torch.tensor(labels)
+        return input_ids, attention_masks, labels
+    else:
+        return input_ids, attention_masks
+
 def tokenize_df(df, tokenizer, max_length=512):
+    """ Tokenize a dataframe of sentences
+    Parameters
+    ----------
+    df: pd.Dataframe
+        Data to be tokenized
+    tokenizer: Tokenizer object
+        Tokenizer to perform tokenization
+    max_length: int, default='512'
+        Maximum length of tokenization
+    Returns
+    -------
+    tokenized: array-like
+        List of dictionaries containing 
+        each pair of tokenized argument 
+        and key-point along with an ID
+    """
+    # Tokenize arguments, saving labels
     input_id_args, attention_masks_args, labels = tokenization(df['argument'], tokenizer, labels = df['label'], max_length=max_length)
+    # Tokenize key-points, labels are not saved again
     input_id_kps, attention_masks_kps = tokenization(df['key_points'], tokenizer, max_length=max_length)
 
+    # Create structure for every pair of tokenized argument and key-point
     tokenized = [ { 'id': i,
         'argument':{
             'input_ids': input_id_args[i],
