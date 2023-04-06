@@ -12,7 +12,7 @@ from os import path
 from transformers import AutoTokenizer, AutoModel, DataCollatorForSeq2Seq, get_linear_schedule_with_warmup
 from datasets import load_metric
 
-from generative_model import GenerativeModel, train, test
+from generative_model import GenerativeModel, train, test, validate
 
 from custom_loss import compute_match_score
 
