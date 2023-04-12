@@ -7,8 +7,10 @@ class GenerativeModel(nn.Module):
     def __init__(self, model_type=None):
         super(GenerativeModel, self).__init__()
  
-        if model_type is None or model_type == "google/pegasus-xsum":
+        if model_type is None:
             self.model = PegasusForConditionalGeneration.from_pretrained("google/pegasus-xsum", num_labels = 2)
+        elif model_type == "google/pegasus-xsum" or model_type == 'google/pegasus-large':
+            self.model = PegasusForConditionalGeneration.from_pretrained(model_type, num_labels = 2)
         elif model_type == "t5-small" or model_type == "t5-base" or model_type == "t5-large":
             self.model = T5ForConditionalGeneration.from_pretrained(model_type, num_labels = 2)
  
