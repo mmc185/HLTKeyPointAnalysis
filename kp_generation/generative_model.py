@@ -3,8 +3,17 @@ from torch import nn
 from transformers import PegasusForConditionalGeneration, T5ForConditionalGeneration
  
 class GenerativeModel(nn.Module):
- 
+    """
+    Generative model class.
+    It is used as wrapper for different generative models such as Pegasus and T5
+    """
     def __init__(self, model_type=None):
+        """ Initialize object of type GenerativeModel
+        Parameters
+        ----------
+        model_type: string, default=None
+            Name of model to be loaded
+        """
         super(GenerativeModel, self).__init__()
  
         if model_type is None:
@@ -15,7 +24,25 @@ class GenerativeModel(nn.Module):
             self.model = T5ForConditionalGeneration.from_pretrained(model_type, num_labels = 2)
  
     def forward(self, input_ids, attention_mask, decoder_input_ids, decoder_attention_mask, labels):
- 
+        """ Performs feed-forward pass
+        Parameters
+        ----------
+        input_ids: array-like
+            Input IDs of input string of encoder
+        attention_masks: array-like
+            Attention mask of input string of encoder
+        decoder_input_ids: array-like
+            Input IDs of input string of encoder
+        decoder_attention_masks: array-like
+            Attention mask of input string of encoder
+        labels: 
+        Returns
+        -------
+        outputs: array-like
+            ???
+        """
+        
+        # Perform feed-forward given the input
         outputs = self.model(input_ids, attention_mask = attention_mask,
                   decoder_input_ids = decoder_input_ids, decoder_attention_mask = decoder_attention_mask,
                             labels = labels)
@@ -23,6 +50,20 @@ class GenerativeModel(nn.Module):
         return outputs
  
     def generate(self, input_args, attention_masks):
+        """ Generates summary given input argument
+        Parameters
+        ----------
+        input_args: array-like
+            Input IDs of input argument
+        attention_masks: array-like
+            Attention mask of input argument
+        Returns
+        -------
+        out_gen: array-like
+            Input IDs of generated summary (???)
+        """
+        
+        # Perform feed-forward given the input
  
         out_gen = self.model.generate(input_ids = input_args, attention_mask = attention_masks, min_length=3, max_length=20)
  
