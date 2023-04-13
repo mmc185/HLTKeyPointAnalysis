@@ -36,6 +36,9 @@ def compute_match_score(arguments, summaries, gen_tokenizer, match_model, match_
         score = 1 - score
     
     score = torch.tensor(score, requires_grad=True)
+    labels = torch.ones(score.shape[0]).to(device)
         
+    loss_func = torch.nn.MSELoss()
+    loss = loss_func(score.float(), labels.float())
         
-    return score.mean()
+    return loss #score.mean()
