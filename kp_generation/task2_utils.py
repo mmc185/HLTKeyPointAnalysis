@@ -23,6 +23,10 @@ from data_handler import tokenization
 sys.path.insert(1, '../kp_match')
 from siamese_network import SiameseNetwork
 
+def concat_tag(df, attribute):
+    df[attribute] = df[attribute].apply(lambda x : "summarize:"+x)
+    return df
+
 def decode_data(pred, exp, tokenizer):
     """ Uses the tokenizer to decoded the predicted sentence
         and the expected sentence
@@ -378,4 +382,4 @@ def trainable(config_dict):
     df=pd.DataFrame(config_dict)
 
     # Store results (if file already exists, append the results otherwise create the .csv file)
-    df.to_csv('../../../HLTKeyPointAnalysis/task 2/task2_grid_results.csv', mode='a', sep='#', index=False, header=False if path.exists("../../../HLTKeyPointAnalysis/task 2/task2_grid_results.csv") else True)
+    df.to_csv('../../../HLTKeyPointAnalysis/task2_grid_results.csv', mode='a', sep='#', index=False, header=False if path.exists("../../../HLTKeyPointAnalysis/task2_grid_results.csv") else True)

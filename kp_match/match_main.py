@@ -43,7 +43,7 @@ model_type = 'bert-base-uncased'
 tokenizer = AutoTokenizer.from_pretrained(model_type, do_lower_case=True)
 
 # Set max length for tokenization
-max_length = 60
+max_length = 100
 
 # Configuration of hyper-parameters to try during the grid search
 params = {

@@ -65,7 +65,7 @@ class GenerativeModel(nn.Module):
         
         # Perform feed-forward given the input
  
-        out_gen = self.model.generate(input_ids = input_args, attention_mask = attention_masks, min_length=3, max_length=20)
+        out_gen = self.model.generate(input_ids = input_args, attention_mask = attention_masks, min_length=3, max_length=35)
  
         return out_gen
  
