@@ -38,8 +38,9 @@ class GenerativeModel(nn.Module):
         labels: 
         Returns
         -------
-        outputs: array-like
-            ???
+        outputs: Seq2SeqLMOutput object
+            Object containing loss of model and other
+            useful data
         """
         
         # Perform feed-forward given the input
@@ -60,11 +61,9 @@ class GenerativeModel(nn.Module):
         Returns
         -------
         out_gen: array-like
-            Input IDs of generated summary (???)
+            Input IDs of generated summary
         """
         
-        # Perform feed-forward given the input
- 
         out_gen = self.model.generate(input_ids = input_args, attention_mask = attention_masks, min_length=3, max_length=35)
  
         return out_gen
@@ -72,9 +71,40 @@ class GenerativeModel(nn.Module):
  
  
 def train(model, device, train_loader, optimizer, epochs, loss_dict, scheduler, max_length, verbose=False):
+    """ Train Generative model
+    Parameters
+    ----------
+    model: GenerativeModel object
+        Generative model to train
+    device: torch device
+        Selected device on which to perform the grid search 
+        (usually a GPU)
+    train_loader: DataLoader object
+        Training Data already divided into mini-batches
+    optimizer: Optimizer object
+        Optimizer for the model
+    epochs: int
+        Number of epochs to train the model
+    loss_dict: dictionary
+        Dict containing informations about the
+        loss function to use
+    scheduler: Scheduler object
+        Scheduler for the learning rate
+    max_length: int
+        Maximum number of tokens
+    verbose: bool, default=False
+        If true, it prints information every 10 mini-batches
+    Returns
+    -------
+    results: dict
+        Contains, for each epoch, the average loss over the epoch,
+        the predictions and labels
+    """
+    
+    # Set model in "train mode"
     model.train()
  
- 
+    # Create results structure
     results = {'loss': torch.zeros([epochs,1]),
               'predicted': torch.zeros([epochs,len(train_loader.dataset), max_length]),
               'labels': torch.zeros([epochs,len(train_loader.dataset), max_length])
@@ -82,6 +112,7 @@ def train(model, device, train_loader, optimizer, epochs, loss_dict, scheduler, 
  
     for epoch in range(0, epochs):
  
+        # Create intermediate structure for each epoch
         epoch_results = {'loss': torch.zeros([len(train_loader),1]),
               'predicted': torch.zeros([len(train_loader.dataset), max_length]),
               'labels': torch.zeros([len(train_loader.dataset), max_length])
@@ -105,29 +136,28 @@ def train(model, device, train_loader, optimizer, epochs, loss_dict, scheduler, 
             if loss_dict is None:
                 outs = model(input_ids, attention_mask, 
                          decoder_input_ids, decoder_attention_mask, 
-                         labels)
+                         labels) # Perform feed-forward pass
  
                 loss = outs.loss
             else:
                 loss_function = loss_dict['loss_function']
+                # Generate summaries to use as loss
                 generated_summaries = model.generate(input_args=input_ids, attention_masks=attention_mask)
  
                 loss = loss_function({'input_ids':input_ids, 'attention_masks':attention_mask}, generated_summaries, loss_dict['gen_tokenizer'], loss_dict['match_model'], loss_dict['match_tokenizer'], device, loss_dict['mode'], max_length)
  
             epoch_results['loss'][batch_idx] = loss.cpu()
  
+            # Performs a backward pass
             loss.backward()
  
-            # Clip the norm of the gradients to 1.0.
-            # This is to help prevent the "exploding gradients" problem.
+            # Clip norm of gradients
             torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
  
-            # Update parameters and take a step using the computed gradient.
-            # The optimizer dictates the "update rule"--how the parameters are
-            # modified based on their gradients, the learning rate, etc.
+            # Perform optimizer step
             optimizer.step()
  
-            # Update the learning rate.
+            # Update the learning rate
             scheduler.step()
  
             # Generate and save predictions
@@ -146,23 +176,47 @@ def train(model, device, train_loader, optimizer, epochs, loss_dict, scheduler, 
  
             epoch_results['labels'][idx_start:idx_end, :labels_len] = labels.cpu()
  
+            # Print current information
             if verbose:
                 if batch_idx % 10 == 0:
                     print(f'Train Epoch:', epoch, 'batch:',
                         batch_idx, 'loss:',
                         loss.mean())
  
- 
+        # Save average loss over the whole epoch
         results['loss'][epoch] = torch.mean(epoch_results['loss'], 0)
+        # Save predictions for each epoch
         results['predicted'][epoch] = epoch_results['predicted']        
+        # Save labels
         results['labels'][epoch] = epoch_results['labels']
  
     return results
  
 def validate(model, device, test_loader, max_length=100):
- 
+    """ Evaluate a Generative model
+    Parameters
+    ----------
+    model: GenerativeModel object
+        Generative model
+    device: torch device
+        Selected device on which to perform the grid search 
+        (usually a GPU)
+    test_loader: DataLoader object
+        Data to perform evaluation on
+    max_length: int, default=100
+        Maximum number of tokens
+    Returns
+    -------
+    results: dict
+        Contains, for each mini-batch 
+        (or sample if batch size is 1),
+        the predictions and labels
+    """
+    
+    # Set model in "evaluation/test mode"
     model.eval()
  
+    # Create structure to save results
     results = {
             'predicted': torch.zeros([len(test_loader.dataset), max_length]),
             'labels': torch.zeros([(len(test_loader.dataset)),max_length])
@@ -183,18 +237,42 @@ def validate(model, device, test_loader, max_length=100):
  
             labels = encodings['labels'].to(device)
  
+            # Generate summaries
             outp = model.generate(input_args = input_ids, attention_masks = attention_mask)
             labels_length = labels.shape[1]
             results['labels'][idx_start:idx_end, :labels_length] = labels.cpu()
             pred_length = outp.shape[1]
+            
+            # Store results for each mini-batch
             results['predicted'][idx_start:idx_end, :pred_length] = outp.cpu()
  
     return results
  
 def test(model, device, test_loader, max_length=100):
- 
+    """ Test a Generative model
+    Parameters
+    ----------
+    model: GenerativeModel object
+        Generative model
+    device: torch device
+        Selected device on which to perform the grid search 
+        (usually a GPU)
+    test_loader: DataLoader object
+        Data to perform evaluation on
+    max_length: int, default=100
+        Maximum number of tokens
+    Returns
+    -------
+    results: dict
+        Contains, for each mini-batch 
+        (or sample if batch size is 1),
+        the predictions
+    """
+    
+    # Set model in "evaluation/test mode"
     model.eval()
  
+    # Create structure to save results
     results = {
             'predicted': torch.zeros([len(test_loader.dataset), max_length])
           }
@@ -212,8 +290,11 @@ def test(model, device, test_loader, max_length=100):
             input_ids = encodings['input_ids'].to(device)
             attention_mask = encodings['attention_mask'].to(device)
  
+            # Generate summaries
             outp = model.generate(input_args = input_ids, attention_masks = attention_mask)
             pred_length = outp.shape[1]
+            
+            # Store predictions
             results['predicted'][idx_start:idx_end, :pred_length] = outp.cpu()
  
     return results
