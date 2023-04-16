@@ -184,7 +184,7 @@ def train(model, device, train_loader, loss_function, optimizer, epochs, schedul
             # Perform optimizer step
             optimizer.step()
 
-            # Update the learning rate.
+            # Update the learning rate
             scheduler.step()
             
             # Print current information
