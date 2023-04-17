@@ -24,7 +24,20 @@ sys.path.insert(1, '../kp_match')
 from siamese_network import SiameseNetwork
 
 def concat_tag(df, attribute):
-    df[attribute] = df[attribute].apply(lambda x : "summarize:"+x)
+    """ Concatenates "summarize:" tag to a
+        column in a dataframe
+    Parameters
+    ----------
+    df: pd.DataFrame
+        DataFrame
+    attribute: string
+        name of column
+    Returns
+    -------
+    df: pd.DataFrame
+        Modified dataframe    
+    """
+    df[attribute] = df[attribute].apply(lambda x : "summarize: "+x)
     return df
 
 def decode_data(pred, exp, tokenizer):
@@ -140,7 +153,8 @@ def tokenization_target(sentences, tokenizer, max_length=512):
         for sent in sentences:
             encoding = tokenizer(sent, max_length = max_length, 
                                      return_attention_mask = True,
-                                     pad_to_max_length = True
+                                     pad_to_max_length = True,
+                                 truncation=True
                             )
 
             """
@@ -380,6 +394,8 @@ def trainable(config_dict):
         config_dict[key] = [config_dict[key]]
     
     df=pd.DataFrame(config_dict)
-
+    
     # Store results (if file already exists, append the results otherwise create the .csv file)
     df.to_csv('../../../HLTKeyPointAnalysis/task2_grid_results.csv', mode='a', sep='#', index=False, header=False if path.exists("../../../HLTKeyPointAnalysis/task2_grid_results.csv") else True)
+    
+    print(config_dict['validation_metrics'])
