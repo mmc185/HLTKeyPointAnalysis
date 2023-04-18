@@ -1,9 +1,7 @@
-import sys
 import pandas as pd
-from sklearn.metrics import precision_recall_curve, average_precision_score, precision_score
+from sklearn.metrics import average_precision_score
 import numpy as np
 import os
-import json
 
 def get_ap(df, label_column, top_percentile=0.5):
     top = int(len(df)*top_percentile)

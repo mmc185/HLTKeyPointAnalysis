@@ -1,24 +1,14 @@
 import torch
-from torch import nn
-from torch.optim.lr_scheduler import StepLR
 from torch.utils.data import DataLoader
-from transformers import BertModel, AdamW, get_linear_schedule_with_warmup, AutoModel
-from sentence_transformers import util
+from transformers import get_linear_schedule_with_warmup, AutoModel
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
 from challenge_metrics import load_kpm_data, get_predictions, evaluate_predictions
 from siamese_network import SiameseNetwork, train, test
-import matplotlib.pyplot as plt
-import numpy as np
 import pandas as pd
-from tqdm import tqdm
-import itertools as it
 from os import path
-import gc
 
-import ray
 from ray import air
 from ray import tune
-from ray.air import session
 
 import sys
 sys.path.insert(1, "../")
