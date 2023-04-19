@@ -1,12 +1,7 @@
 import torch
 from torch import nn
-from torch.optim.lr_scheduler import StepLR
-from transformers import BertModel, AutoModel
-from sentence_transformers import util
-import numpy as np
-from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
-from sklearn.preprocessing import MinMaxScaler
-from challenge_metrics import get_predictions, evaluate_predictions
+from transformers import AutoModel
+
 
 class SiameseNetwork(nn.Module):
     """
