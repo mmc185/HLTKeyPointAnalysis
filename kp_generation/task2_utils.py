@@ -201,7 +201,7 @@ def tokenize_df_gen(df, tokenizer, max_length=512, key_points_on=True):
     if key_points_on:
         input_id_kps, attention_masks_kps, labels = tokenization_target(df['key_point'], tokenizer, max_length=max_length)
 
-        tokenized = [ { #'id': i,
+        tokenized = [ {
             'input_ids': input_id_args[i],
             'attention_mask' : attention_masks_args[i], 
             'decoder_input_ids': input_id_kps[i],
@@ -209,7 +209,7 @@ def tokenize_df_gen(df, tokenizer, max_length=512, key_points_on=True):
             'labels': labels[i]
             } for i in range(len(input_id_args)) ]
     else:
-        tokenized = [ { #'id': i,
+        tokenized = [ {
             'input_ids': input_id_args[i],
             'attention_mask' : attention_masks_args[i]
             } for i in range(len(input_id_args)) ]

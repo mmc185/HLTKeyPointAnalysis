@@ -44,7 +44,6 @@ def load_kpm_data(gold_data_dir, subset, submitted_kp_file=None):
 
 
 def get_predictions(predictions_dict, labels_df, arg_df, kp_df):
-#    print("\nֿ** loading predictions:")
     arg_df = arg_df[["arg_id", "topic", "stance"]]
     predictions_df = load_predictions(predictions_dict, kp_df["key_point_id"].unique())
 
@@ -62,14 +61,6 @@ def get_predictions(predictions_dict, labels_df, arg_df, kp_df):
     merged_df["label_strict"] = merged_df["label"].fillna(0)
     merged_df["label_relaxed"] = merged_df["label"].fillna(1)
 
-
-    #print("\n** predictions analysis:")
-    #for desc, group in merged_df.groupby(["stance", "topic"]):
-        #not_dummies = group[group["key_point_id"] != "dummy_id"]
-        #print(f"\t{desc}:")
-        #print(f"\t\tsubmitted matched for {len(not_dummies)/len(group):.2} of the arguments ({len(not_dummies)}/{len(group)})")
-
-
     return merged_df
 
 
@@ -82,8 +73,6 @@ def load_predictions(predictions_dict, correct_kp_list):
     kp = []
     scores = []
     invalid_keypoints = set()
-    #with open(predictions_dir, "r") as f_in:
-    #    res = json.load(f_in)
         
     for arg_id, kps in predictions_dict.items():
         valid_kps = {key: value for key, value in kps.items() if key in correct_kp_list}
