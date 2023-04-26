@@ -4,8 +4,7 @@ from ray import tune
 import ray
 
 from transformers import AutoTokenizer
-from task2_utils import grid_search
-from task2_utils import concat_tag
+from gen_utils import grid_search, concat_tag
 
 
 import sys
