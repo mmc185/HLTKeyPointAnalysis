@@ -5,7 +5,7 @@ from transformers import AutoTokenizer, DataCollatorForSeq2Seq
 from generative_model import GenerativeModel, train, test, validate
 from torch.utils.data import DataLoader
 from transformers import get_linear_schedule_with_warmup
-from task2_utils import tokenize_df_gen, decode_data, compute_metrics, concat_tag
+from gen_utils import tokenize_df_gen, decode_data, compute_metrics, concat_tag
 
 import sys
 import os
@@ -58,9 +58,9 @@ def plot_fmeasure(train_score, val_score, epochs, model_type):
     model_type: string
         Name of model
     """
-    plt.plot( range(1,epochs+1), [train_score[i]['rouge']['rouge1']['fmeasure'] for i in range(0, len(train_score))],
+    plt.plot( range(1,epochs+1), [train_score[i] for i in range(0, len(train_score))],
             label='Train') 
-    plt.plot( range(1,epochs+1), [val_score[i]['rouge']['rouge1']['fmeasure'] for i in range(0, len(val_score))],
+    plt.plot( range(1,epochs+1), [val_score[i] for i in range(0, len(val_score))],
             label='Val') 
     plt.ylim([0, 1])
     plt.xlabel('epochs')
@@ -134,7 +134,7 @@ def train_with_plots(device, df_train, df_val, config, loss_dict, max_length, me
     
     # Create results structure
     results = {'loss': torch.zeros([epochs, len(train_loader), 1]),
-               'train_score': [None] * epochs, 
+               'train_score': [0] * epochs, 
                'val_score': [None] * epochs 
               }
  
@@ -187,24 +187,19 @@ def train_with_plots(device, df_train, df_val, config, loss_dict, max_length, me
  
             scheduler.step()
  
-            # Generate and save predictions
-            idx_start = batch_idx*encodings['input_ids'].shape[0]
-            if (batch_idx+1)*encodings['input_ids'].shape[0] > len(train_loader.dataset):
-                idx_end = len(train_loader.dataset)
-            else:
-                idx_end = (batch_idx+1)*encodings['input_ids'].shape[0]
- 
             generated_summaries = model.generate(input_args=input_ids, attention_masks=attention_mask)
         
             gen_len = generated_summaries.shape[1]
             labels_len = labels.shape[1]
             
             dec_pred, dec_exp = decode_data(generated_summaries.cpu(), labels.cpu(), tokenizer)
-            results['train_score'][epoch] = compute_metrics(dec_pred, dec_exp, metrics)
- 
+            score = compute_metrics(dec_pred, dec_exp, metrics)
+            results['train_score'][epoch] += score['rouge']['rouge1']['fmeasure']
         
         # Perform validation step for each epoch to create a plot
         model.eval()
+        
+        results['train_score'][epoch] = results['train_score'][epoch]/len(train_loader)
         
         val_res = validate(model, device, val_loader, max_length)
         
@@ -217,11 +212,11 @@ def train_with_plots(device, df_train, df_val, config, loss_dict, max_length, me
         # Save average loss over the whole epoch
         results['loss'][epoch] = epoch_results['loss'] 
         # Save validation score at each epoch
-        results['val_score'][epoch] = validation_scores
+        results['val_score'][epoch] = validation_scores['rouge']['rouge1']['fmeasure']
  
     return results
 
-os.environ["CUDA_VISIBLE_DEVICES"]="3"
+os.environ["CUDA_VISIBLE_DEVICES"]="1"
 device = torch.device(0)
 
 df_train, df_val, df_test = data_handler.load_full_dataset('../dataset/', get_train=True, get_dev=True, get_test=True)
